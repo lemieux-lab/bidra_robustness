@@ -1,5 +1,6 @@
 using Turing, MCMCChains, ReverseDiff
 using Distributions
+using FillArrays
 
 @model function modelNormal(x)
     μ ~ Normal()
