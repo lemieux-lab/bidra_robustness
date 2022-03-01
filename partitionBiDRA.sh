@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Total number of Batch
-B=100
+B=20
 # Nb of batch per run
 b=$B
 # Run we are currently at
@@ -15,3 +15,4 @@ for ((i=$SB; i<$FB; i++));
 do
     nohup julia bidra.jl $B $i &
 done
+
