@@ -52,6 +52,9 @@ T = @elapsed for e in subset_expId
     toSave = posterior_df[:,[:HDR, :LDR, :ic50, :slope, :σ, :chain]]
     CSV.write(result_prefix*e*".csv", toSave)
 
+    ### save complete chain for further analysis
+    write(result_prefix*"savedChains/"*e*".jls", bidra_chains)
+
     ### add to diagnostics
     println("UPDATE DIAGNOTICS")
     medVal = median.(eachcol(toSave[:,[:HDR, :LDR, :ic50, :slope, :σ,]]))

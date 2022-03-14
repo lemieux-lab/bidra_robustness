@@ -54,11 +54,28 @@ function getPairings(dt)
 end
 
 function getMLestimates(dt, paired, pairing_df)
-    mle_prefix = "/home/golem/scratch/labellec/_RESULTS/MLE_ESTIMATES/"* dt * ".csv"
+    mle_prefix = "/home/golem/scratch/labellec/_RESULTS/MLE_ESTIMATES/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true)
+
+    mle_data = filter(:dataset => x -> x ∈ dt, mle_data)
     
     if paired
-        mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_tmp)
+        mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
+        mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
+
+        mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep_1"))
+        mle_tmp = innerjoin(mle_tmp, mle_data, on=:rep_2 => :exp_id, renamecols=("" => "_rep_2"))
+    
+        mle_data = filter(row -> !isnan(row.LDR_rep_1) && !isnan(row.LDR_rep_2), mle_tmp)
+
+        ### Print summary
+        for i in dt
+            tmp = filter(:dataset_rep_1 => x -> x == i, mle_data)
+            println(i, " : ", length(unique(tmp.rep_1)), " experiments duplicates")
+        end
+        println("------------------------------------")
+        println("TOTAL : ", length(unique(mle_data.rep_1)), " experiments experiments duplicates")
+        println()
     end
 
     return mle_data
@@ -91,7 +108,7 @@ function getBIDRAdiagnotics(dt, paired, pairing_df)
     return bidra_data
 end
 
-function getBIDRAposterior(dt, pairing_df)
+function getBIDRAposterior(dt, expId_list)
     posterior_prefix = "/home/golem/scratch/labellec/_RESULTS/"*dt*"_julia_process_all/"
     
     function getPosterior(exp) 
@@ -100,7 +117,7 @@ function getBIDRAposterior(dt, pairing_df)
     
     data_posterior = DataFrame(HDR=[], LDR=[], ic50=[], slope=[], σ=[], exp_id=[])
     
-    for e in [pairing_df.rep_1; pairing_df.rep_2]
+    for e in expId_list
         tmp = getPosterior(e)[:, [:HDR, :LDR, :ic50, :slope, :σ]]
         tmp[!,"exp_id"] = repeat([e], nrow(tmp))
         append!(data_posterior, tmp)
@@ -156,4 +173,47 @@ function correlationAnalysis(X, Y)
     pearson = cor(data[:, :x], data[:, :y])
 
     return DataFrame(slope=lr_slope, r²=rSquared, rₛ=spearman, r=pearson)
+end
+
+function getPosteriorCurves(posterior_df, xmin, xmax) 
+    xDose = xmin-1:0.1:xmax+2
+
+    curves_df = DataFrame()
+    for c in xDose 
+        curves_df[!,Symbol(c)] = [0.0]
+    end
+
+    for i = 1:nrow(posterior_df)
+        tmp = posterior_df[i,[:LDR, :HDR, :ic50, :slope]]
+        f = llogistic(tmp)
+        y_tmp = f.(xDose)
+        
+        push!(curves_df, y_tmp)
+    end 
+    
+    return curves_df
+end
+
+###### Compute AAC ####
+function computeAAC(dose, viability, params)
+    a = minimum(dose)
+    b = maximum(dose)
+    
+    viability = viability ./ 100
+    params[1] = params[1] / 100
+    params[2] = params[2] / 100
+
+    if params[2] == 1 
+        aac = 0
+    elseif params[4] == 0 0
+        aac = (params[1] - params[2]) / 2 
+    else 
+        Δ = b - a
+        aac = ((params[1] - params[2]) / (params[4] * params[1] * Δ)) * (log10((1 + 10 ^ (params[4] * (b - params[3]))) / (1 + 10 ^ (params[4] * (a - params[3])))))
+    end
+
+    params[1] = params[1] * 100
+    params[2] = params[2] * 100
+
+    return aac*100
 end

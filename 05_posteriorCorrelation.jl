@@ -7,7 +7,7 @@ results_prefix = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_g
 
 gCSIpairings_df = getPairings("gCSI")
 gCSIposteriorPaired_df = getPairedPosterior("gCSI", gCSIpairings_df)
-bidra_params = ["LDR", "HDR", "I", "S"]
+bidra_params = ["LDR", "HDR", "ic50", "slope"]
 
 for pr in bidra_params
     prSubset = filter(:param => x -> x == pr, gCSIposteriorPaired_df)
