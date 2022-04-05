@@ -1,5 +1,7 @@
 using DataFrames
-using Statistics, StatsBase
+using Distributions, Statistics, StatsBase
+using Gadfly, StatsPlots
+using Cairo, Fontconfig
 
 include("utils.jl")
 
@@ -9,24 +11,37 @@ gCSIpairings_df = getPairings("gCSI")
 gCSImlPaired_df = getMLestimates(["gCSI"], true, gCSIpairings_df)
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
+### replace Inf aac by Nan
+gCSImlPaired_df[!, :aac_rep_1] = replace(gCSImlPaired_df.aac_rep_1, Inf => NaN)
+gCSImlPaired_df[!, :aac_rep_2] = replace(gCSImlPaired_df.aac_rep_2, Inf => NaN)
+
 for pr in bidra_params
     rep1 = Symbol(pr,"_rep_1")
     rep2 = Symbol(pr,"_rep_2")
 
-    mlCorr_df = correlationAnalysis(gCSImlPaired_df[:,rep1], gCSImlPaired_df[:,rep2])
-    mlCorr_df[:, :N] = [nrow(gCSImlPaired_df)]
-    mlCorr_df[:, :dataset] = ["gCSI"]
+    tmp = filter(rep1 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), gCSImlPaired_df)
+    tmp = filter(rep2 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), tmp)
+
+    mlCorr_df = correlationAnalysis(tmp[:,rep1], tmp[:,rep2])
+    mlCorr_df[:, :N] = [nrow(tmp)]
+    mlCorr_df[:, :dataset] = ["gCSI_all"]
     mlCorr_df[:, :param] = [pr]
 
     CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=true)
 end
 
-Gadfly.set_default_plot_size(4inch, 3inch)
-scaleColor = Scale.lab_gradient("gray95","black")
-pr="ic50"
-p = Gadfly.plot(gCSImlPaired_df, x=Symbol(pr,"_rep_1"), y=Symbol(pr,"_rep_1"),
-            Geom.hexbin(xbincount=75, ybincount=75), 
-            Scale.color_continuous(colormap=scaleColor, minvalue=1))
-display(p)
+gCSIsubset_converged = filter([:convergence_rep_1, :convergence_rep_2] => (a, b) -> a + b == 2, gCSImlPaired_df)
+for pr in bidra_params
+    rep1 = Symbol(pr,"_rep_1")
+    rep2 = Symbol(pr,"_rep_2")
 
-p = Gadfly.plot(gCSIml_df, x=:LDR, )
+    tmp = filter(rep1 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), gCSIsubset_converged)
+    tmp = filter(rep2 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), tmp)
+
+    mlCorr_df = correlationAnalysis(tmp[:,rep1], tmp[:,rep2])
+    mlCorr_df[:, :N] = [nrow(tmp)]
+    mlCorr_df[:, :dataset] = ["gCSI_converge"]
+    mlCorr_df[:, :param] = [pr]
+
+    CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=true)
+end

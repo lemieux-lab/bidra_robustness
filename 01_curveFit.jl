@@ -6,7 +6,7 @@ include("utils.jl")
 
 ###### Global Var ####
 juliaMLe_fn = "/home/golem/scratch/labellec/_RESULTS/MLE_ESTIMATES/all_julia_curveFit.csv"
-@. model(x, p) = p[2] + (p[1] - p[2]) / (1 + exp(p[4] * (x - p[3])))
+@. model(x, p) = p[2] + ((p[1] - p[2]) / (1 + 10^(p[4] * (x - p[3]))))
 p₀ = [100.,0.,0.,1]
 
 ###### Data ##########

@@ -25,7 +25,7 @@ nAdapt = 1000
 δ = 0.65
 #Turing.setadbackend(:reversediff)
 
-data_df = getRawData(datasets, data_prefix, true)
+data_df = getRawsubset_Data(datasets, data_prefix, true)
 expId = unique(data_df.exp_id)
 
 ### Create batches and select one

@@ -44,7 +44,7 @@ end
 
 function llogistic(param) 
     LDR, HDR, ic50, slope = param    
-    return x -> HDR + (LDR - HDR) / (1 + exp(slope * (x - ic50)))
+    return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
 end
 
 function getPairings(dt)
@@ -61,7 +61,7 @@ function getMLestimates(dt, paired, pairing_df)
     
     if paired
         mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
-        mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
+        mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset, :convergence]]
 
         mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep_1"))
         mle_tmp = innerjoin(mle_tmp, mle_data, on=:rep_2 => :exp_id, renamecols=("" => "_rep_2"))
@@ -195,6 +195,7 @@ function getPosteriorCurves(posterior_df, xmin, xmax)
 end
 
 ###### Compute AAC ####
+## param: LDR, HDR, IC50, slope
 function computeAAC(dose, viability, params)
     a = minimum(dose)
     b = maximum(dose)
@@ -205,11 +206,13 @@ function computeAAC(dose, viability, params)
 
     if params[2] == 1 
         aac = 0
-    elseif params[4] == 0 0
+    elseif params[4] == 0 
         aac = (params[1] - params[2]) / 2 
     else 
         Δ = b - a
-        aac = ((params[1] - params[2]) / (params[4] * params[1] * Δ)) * (log10((1 + 10 ^ (params[4] * (b - params[3]))) / (1 + 10 ^ (params[4] * (a - params[3])))))
+        upDiv = 1 + 10 ^ (params[4] * (b - params[3]))
+        downDiv = 1 + 10 ^ (params[4] * (a - params[3]))
+        aac = ((params[1] - params[2]) / (params[4] * params[1] * Δ)) * log10(upDiv / downDiv)
     end
 
     params[1] = params[1] * 100
