@@ -25,7 +25,7 @@ nAdapt = 1000
 δ = 0.65
 #Turing.setadbackend(:reversediff)
 
-data_df = getRawsubset_Data(datasets, data_prefix, true)
+data_df = getRawData(datasets, data_prefix, true)
 expId = unique(data_df.exp_id)
 
 ### Create batches and select one
@@ -49,7 +49,15 @@ T = @elapsed for e in subset_expId
     ### save posterior values
     println("SAVE POSTERIOR VALUES")
     posterior_df = DataFrame(bidra_chains)
-    toSave = posterior_df[:,[:HDR, :LDR, :ic50, :slope, :σ, :chain]]
+    toSave = posterior_df[:,[:LDR, :HDR, :ic50, :slope, :σ, :chain]]
+
+    aacPosterior = []
+    for i in 1:nrow(toSave)
+        tmp = computeAAC(subset_df.Concentration, subset_df.Viability, toSave[i, [:LDR, :HDR, :ic50, :slope]])
+        push!(aacPosterior, tmp)
+    end
+    toSave[!, :aac] = aacPosterior
+
     CSV.write(result_prefix*e*".csv", toSave)
 
     ### save complete chain for further analysis

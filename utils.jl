@@ -132,8 +132,8 @@ function getPairedPosterior(dt, pairing_df)
         results_path = "/home/golem/scratch/labellec/_RESULTS/"*dt*"_julia_process_all/"
         exp1, exp2 = pair
     
-        posterior1 = readCSV(results_path*exp1*".csv", true)[:, [:HDR, :LDR, :ic50, :slope, :σ]]
-        posterior2 = readCSV(results_path*exp2*".csv", true)[:, [:HDR, :LDR, :ic50, :slope, :σ]]
+        posterior1 = readCSV(results_path*exp1*".csv", true)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
+        posterior2 = readCSV(results_path*exp2*".csv", true)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
     
         posterior1[!,:exp_id] = repeat([exp1], nrow(posterior1))
         posterior2[!,:exp_id] = repeat([exp2], nrow(posterior2))
