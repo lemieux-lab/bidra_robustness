@@ -115,10 +115,10 @@ function getBIDRAposterior(dt, expId_list)
         return readCSV(posterior_prefix*exp*".csv", true)
     end
     
-    data_posterior = DataFrame(HDR=[], LDR=[], ic50=[], slope=[], σ=[], exp_id=[])
+    data_posterior = DataFrame(HDR=[], LDR=[], ic50=[], slope=[], aac=[], σ=[], exp_id=[])
     
     for e in expId_list
-        tmp = getPosterior(e)[:, [:HDR, :LDR, :ic50, :slope, :σ]]
+        tmp = getPosterior(e)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
         tmp[!,"exp_id"] = repeat([e], nrow(tmp))
         append!(data_posterior, tmp)
     end
@@ -172,7 +172,7 @@ function correlationAnalysis(X, Y)
     spearman = corspearman(data[:, :x], data[:, :y])
     pearson = cor(data[:, :x], data[:, :y])
 
-    return DataFrame(slope=lr_slope, r²=rSquared, rₛ=spearman, r=pearson)
+    return DataFrame(slope=lr_slope, intercept=GLM.coef(lf)[1], r²=rSquared, rₛ=spearman, r=pearson)
 end
 
 function getPosteriorCurves(posterior_df, xmin, xmax) 

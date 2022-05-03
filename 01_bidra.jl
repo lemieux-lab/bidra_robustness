@@ -10,11 +10,11 @@ mod = parse(Int64, ARGS[1])
 batch = parse(Int64, ARGS[2])
 
 ### Global variables
-datasets = ["gCSI"]
+datasets = ["ctrpv2"]
 data_prefix = "/home/golem/scratch/labellec/_DATA/"
-result_prefix = "/home/golem/scratch/labellec/_RESULTS/gCSI_julia_process_all/"
-figure_prefix = "/home/golem/scratch/labellec/_RESULTS/gCSI_julia_process_all/FIGURES/"
-diagnostic_fn = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_data/gCSI_diagnostics.csv"
+result_prefix = "/home/golem/scratch/labellec/_RESULTS/"*datasets[1]*"_julia_process_all/"
+figure_prefix = "/home/golem/scratch/labellec/_RESULTS/"*datasets[1]*"_julia_process_all/FIGURES/"
+diagnostic_fn = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_data/"*datasets[1]*"_diagnostics.csv"
 diagnosticTMP_fn = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_data/TMP_diagnostics"*string(batch)*".csv"
 batchTiming_fn = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_data/batch_timing.csv"
 
@@ -35,6 +35,7 @@ subset_expId = [expId[i] for i in 1:length(expId) if i%mod == batch]
 #subset_expId = ["RERF-LC-MS_Gemcitabine_4b", "RERF-LC-MS_Gemcitabine_7h", "NCI-H1648_AZ-628_8h", "NCI-H1648_AZ-628_4a",
 #                "Calu-1_PF-4708671_7h", "Calu-1_PF-4708671_6b", "NCI-H2030_Methotrexate_7c", "NCI-H2030_Methotrexate_6b"]
 
+println("STARTING LOOP")
 ##### Subset 
 T = @elapsed for e in subset_expId
     println(e)

@@ -12,7 +12,7 @@ figure_prefix = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_ge
 data_df = getRawData(["gCSI"], "/home/golem/scratch/labellec/_DATA/", true)
 expId_list = unique(data_df.exp_id)
 
-expIdSubset_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b"]
+expIdSubset_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b", "HCC78_Lapatinib_11a"]
 
 gCSIml_df = getMLestimates(["gCSI"], false, missing)
 gCSIml_df = filter(:exp_id => i -> i ∈ expId_list, gCSIml_df)
