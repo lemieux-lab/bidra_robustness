@@ -48,8 +48,8 @@ function llogistic(param)
 end
 
 function getPairings(dt)
-    prefix = "/u/labellec/Desktop/bayesian_dose_response/articles/"
-    df = readCSV(prefix*"_DATA/"*dt*"_rep2_pairing.csv", true)
+    prefix = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/"
+    df = readCSV(prefix*"_data/"*dt*"_rep2_pairing.csv", true)
     return df
 end
 
