@@ -1,4 +1,4 @@
-include("utils.jl")
+include("../utils.jl")
 
 ### Batch variables
 dataset = ARGS[1]
@@ -9,7 +9,7 @@ diagnostic_data = DataFrame(exp_id=[], batch=[], time=[], HDR=[], LDR=[], ic50=[
 
 for i in 1:Nbatch
     batch = i-1
-    diagnosticTMP_fn = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_data/TMP_diagnostics"*string(batch)*".csv"
+    diagnosticTMP_fn = "../_generated_data/TMP_diagnostics"*string(batch)*".csv"
     
     tmp = readCSV(diagnosticTMP_fn, false)
     rename!(tmp, [:exp_id, :batch, :time, :HDR, :LDR, :ic50, :slope, :σ])

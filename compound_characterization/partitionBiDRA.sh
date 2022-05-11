@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Dataset to analyze
+dt=$1
+
 # Total number of Batch
 B=20
 # Nb of batch per run
@@ -13,6 +16,6 @@ SB=$FB-$b
 
 for ((i=$SB; i<$FB; i++)); 
 do
-    nohup julia 01_bidra.jl $B $i &
+    nohup julia bidra.jl $B $i $dt &
 done
 
