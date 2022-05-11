@@ -1,0 +1,8 @@
+## From notebooks
+.ipynb_checkpoints
+
+## From VSCode
+.vscode
+
+## From analysis
+nohup.out
