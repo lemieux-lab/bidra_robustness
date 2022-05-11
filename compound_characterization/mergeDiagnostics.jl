@@ -4,7 +4,7 @@ include("../utils.jl")
 dataset = ARGS[1]
 Nbatch = parse(Int64, ARGS[2])
 
-diagnostic_fn = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_data/"*dataset*"_diagnostics.csv"
+diagnostic_fn = "../_generated_data/"*dataset*"_diagnostics.csv"
 diagnostic_data = DataFrame(exp_id=[], batch=[], time=[], HDR=[], LDR=[], ic50=[], slope=[], σ=[])
 
 for i in 1:Nbatch

@@ -7,3 +7,7 @@ To predict estimates with standard Marquardt-Levenberg: `julia curveFit.jl`. The
 To infer posterior distribution with BiDRA: `./partionBiDRA.sh [nameOfDataset]`. Temporary diagnostics files are created for each batch. To merge them into one diagnotics file: `julia mergeDiagnostics.jl`. Posterior distributions, complete chains results and figures are stored on the server.
 
 
+## Do correlation analysis
+To get correlation metrics (slope of linear fit, r2, Spearman and Pearson correlation coefficients) of paramters estimates (Marquardt-Levenberg): `julia MLcorrelation.jl [nameOfDataset]`. Results are added to a CSV file. 
+
+To get correlation metrics of posterior distributions (BiDRA): `julia posteriorCorrelation.jl [nameOfDataset]`. Correlation metrics are calculated for 4 posterior representations: median, three-percentiles, random sampling and quantile-to-quantile. Results are added to various CSV files.
