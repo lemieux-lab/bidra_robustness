@@ -9,7 +9,7 @@ results_prefix = "../_generated_data/"
 dt = ARGS[1]
 #dt = "gCSI"
 #dt = "gray"
-#dt = "ctrpv2"
+dt = "ctrpv2"
 
 pairings_df = getPairings(dt)
 posteriorPaired_df = getPairedPosterior(dt, pairings_df)
