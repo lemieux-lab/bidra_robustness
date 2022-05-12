@@ -8,6 +8,8 @@ To infer posterior distribution with BiDRA: `./partionBiDRA.sh [nameOfDataset]`.
 
 
 ## Do correlation analysis
+Pairings of duplicated experiments are listed in `[nameOfDataset]_rep2_pairing.csv` files. To get those lists: `julia generatesPairings.jl [nameOfDataset]`.
+
 To get correlation metrics (slope of linear fit, r2, Spearman and Pearson correlation coefficients) of paramters estimates (Marquardt-Levenberg): `julia MLcorrelation.jl [nameOfDataset]`. Results are added to a CSV file. 
 
 To get correlation metrics of posterior distributions (BiDRA): `julia posteriorCorrelation.jl [nameOfDataset]`. Correlation metrics are calculated for 4 posterior representations: median, three-percentiles, random sampling and quantile-to-quantile. Results are added to various CSV files.
