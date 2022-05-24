@@ -131,89 +131,26 @@ draw(PDF(figure_prefix*dt*"boxplot_std_ml_ic50.pdf", 3inch, 3inch), pC)
 draw(PDF(figure_prefix*dt*"boxplot_std_ml_ic50_conv.pdf", 3inch, 3inch), pC_conv)
 
 
+###### Metrics vs. posterior ##########
+println("4. Looking @ ML est. vs. posterior Δ")
+metrics_df = get_posterior_diff(posterior_df, metrics_df)
 
+for em in eff_metrics
+    println("---> ", em)
+    println("------> Plotting hexbin")
+    em_subset_df = metricZoom_subset(metrics_df, em, metrics_bounds[em][1], metrics_bounds[em][2])
+    p = ml_post_diff_plot(em_subset_df, em, metrics_bounds[em][1], metrics_bounds[em][2])
 
+    if dt == datasets[1]
+        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, metrics_df)
+        push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_postDiff"), y=em, Geom.point()))
+    end
 
-###### postDif vs. ML estimations ##########
-gCSIposteriorDiff_df = combine(groupby(gCSIposterior_df, :exp_id), 
-                                        :HDR => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :HDR_postDiff,
-                                        :LDR => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :LDR_postDiff,
-                                        :ic50 => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :ic50_postDiff)
-filter(:exp_id => x -> x ∈ expIdSubset_list, gCSIposteriorDiff_df)
+    draw(PDF(figure_prefix*dt*"_postDiff_ml_"*string(em)*".pdf", 3inch, 2inch), p)
 
-gCSImetrics_df = innerjoin(gCSImetrics_df, gCSIposteriorDiff_df, on=:exp_id)
+    println("------> Plotting contour")
+    em_mtx = kde((em_subset_df[:, Symbol(String(em)*"_postDiff")], em_subset_df[:, em]))
+    p = ml_post_diff_contour_plot(em_mtx, metrics_bounds[em][1], metrics_bounds[em][2])
+    draw(PDF(figure_prefix*dt*"_postDiff_ml_"*string(em)*"_contour.pdf", 3inch, 2inch), p)
+end
 
-## HDR comparison
-Gadfly.set_default_plot_size(3inch, 2inch)
-metricsSubset = filter(:HDR => x -> -50 ≤ x ≤ 150, gCSImetrics_df)
-p8 = Gadfly.plot(metricsSubset, x=:HDR, y=:HDR_postDiff, 
-                 Geom.hexbin(xbincount=120, ybincount=100),
-                 Scale.color_continuous(colormap=scaleColor, minvalue=1),
-                 Coord.cartesian(xmin=-50, xmax=150, ymin=0),
-                 Theme(panel_stroke="black"))
-
-expIDsubset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, gCSImetrics_df)
-push!(p8, layer(expIDsubset_df, xintercept=:HDR, Geom.vline()))
-push!(p8, layer(expIDsubset_df, yintercept=:HDR_postDiff, Geom.hline()))
-draw(PDF(figure_prefix*"postDiff_hdr.pdf", 3inch, 2inch), p8)
-
-## IC50 comparison
-Gadfly.set_default_plot_size(3inch, 2inch)
-metricsSubset = filter(:ic50 => x -> -15 ≤ x ≤ 15, gCSImetrics_df)
-p9 = Gadfly.plot(metricsSubset, x=:ic50, y=:ic50_postDiff, 
-                 Geom.hexbin(xbincount=120, ybincount=100),
-                 Scale.color_continuous(colormap=scaleColor, minvalue=1),
-                 Coord.cartesian(xmin=-15, xmax=15, ymin=0),
-                 Theme(panel_stroke="black"))
-
-expIDsubset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, gCSImetrics_df)
-push!(p9, layer(expIDsubset_df, xintercept=:ic50, Geom.vline()))
-push!(p9, layer(expIDsubset_df, yintercept=:ic50_postDiff, Geom.hline()))
-draw(PDF(figure_prefix*"postDiff_ic50.pdf", 3inch, 2inch), p9)
-
-#### Example #4
-## exp_id = HCC78_Lapatinib_11a, KP-3_Erastin_4b, KMM-1_Dabrafenib_11d
-e = "HCC78_Lapatinib_11a"
-Gadfly.set_default_plot_size(4inch, 2inch)
-viab_subset = filter(:exp_id => x -> x == e, data_df)
-p10 = Gadfly.plot(layer(viab_subset, x=:Concentration, y=:Viability, color=:exp_id, Geom.point()),
-                  Coord.cartesian(ymin=-10, ymax=110),
-                  Theme(panel_stroke="black"))
-
-subset_posterior = getBIDRAposterior("gCSI", [e])
-postCurves = getPosteriorCurves(subset_posterior, -4, 1)
-xDose = parse.(Float64, names(postCurves))
-
-med_curve = median.(eachcol(postCurves))
-upper_curve = percentile.(eachcol(postCurves), 97.5)
-lower_curve = percentile.(eachcol(postCurves), 2.5)
-push!(p10, layer(x=xDose, y=med_curve, color=[e], linestyle=[:dot], Geom.line()))
-        
-mleFit = llogistic(filter(:exp_id => x -> x == e, gCSIml_df)[1, [:LDR, :HDR, :ic50, :slope]])
-yViability = mleFit.(xDose)
-push!(p10, layer(x=xDose, y=yViability, color=[e], Geom.line()))
-
-push!(p10, layer(x=xDose, ymin=lower_curve, ymax=upper_curve, color=[e], alpha=[0.3], Geom.ribbon()))
-draw(PDF(figure_prefix*"curveExample.pdf", 4inch, 2inch), p10)
-
-Gadfly.set_default_plot_size(3inch, 2inch)
-x = percentile(subset_posterior.HDR, [2.5, 97.5])
-ymin = [0.,0.]
-ymax = ymin .+ 0.04
-hdr = filter(:exp_id => x -> x == e, gCSIml_df)[:, :HDR]
-p11 = Gadfly.plot(subset_posterior, x=:HDR, Geom.histogram(density=true),
-                  layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon()),
-                  layer(xintercept=hdr, Geom.vline()),
-                  Theme(panel_stroke="black"))
-draw(PDF(figure_prefix*"posteriorExample_HDR.pdf", 3inch, 2inch), p11)
-
-Gadfly.set_default_plot_size(3inch, 2inch)
-x = percentile(subset_posterior.ic50, [2.5, 97.5])
-ymin = [0.,0.]
-ymax = ymin .+ 4
-ic50 = filter(:exp_id => x -> x == e, gCSIml_df)[:, :ic50]
-p12 = Gadfly.plot(subset_posterior, x=:ic50, Geom.histogram(density=true),
-                  layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon()),
-                  layer(xintercept=ic50, Geom.vline()),
-                  Theme(panel_stroke="black"))
-draw(PDF(figure_prefix*"posteriorExample_IC50.pdf", 3inch, 2inch), p12)

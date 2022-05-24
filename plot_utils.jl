@@ -1,4 +1,4 @@
-using DataFrames
+using DataFrames, DataStructures
 using Distributions, Statistics, StatsBase, KernelDensity
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
@@ -24,7 +24,7 @@ end
 function metricZoom_subset(metrics_df, mt, lb, ub)
     tmp = filter(mt => x -> lb ≤ x ≤ ub, metrics_df)
     println("------> ", length(unique(tmp.exp_id)), " experiments out of ", length(unique(metrics_df.exp_id)), " for ", mt)
-    tmp[!,mt] = convert.(Float64, subset_df[!,mt])
+    tmp[!,mt] = convert.(Float64, tmp[!,mt])
     return tmp
 end
 
@@ -114,15 +114,19 @@ function boxplots_dose_plot(withinDose_prob)
                     Geom.boxplot(),)
 
     pC = Gadfly.plot(withinDose_prob, x=:outsideDoseML, y=:viability_std, yintercept=[20],
-                    Geom.vline(), Geom.boxplot())
+                    Geom.hline(), Geom.boxplot())
 
     pC_conv = Gadfly.plot(tmp, x=:outsideDoseML, y=:viability_std, yintercept=[20],
-                    Geom.vline(), Geom.boxplot())
+                    Geom.hline(), Geom.boxplot())
 
-    return pA, pB, pC
+    println("------> Count outsideDoseML : ", counter(withinDose_prob.outsideDoseML))
+    println("------> Count outsideDoseML conv.: ", counter(tmp.outsideDoseML))
+    println("------> Count convergence : ", counter(withinDose_prob.convergence))
+
+    return pA, pA_conv, pB, pC, pC_conv
 end
 
-function get_posterior_diff(posterior_dr, metrics_df)
+function get_posterior_diff(posterior_df, metrics_df)
     posteriorDiff_df = combine(groupby(posterior_df, :exp_id), 
                                     eff_metrics[1] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :HDR_postDiff,
                                     eff_metrics[2] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :LDR_postDiff,
@@ -154,16 +158,11 @@ function ml_post_diff_contour_plot(mtx, lb, ub)
     return p
 end
 
-
-
 function get_converged(df)
     tmp = filter(:convergence => x -> x == true, df)
     println("------> ", length(unique(tmp.exp_id)), " experiments converged out of ", length(unique(df.exp_id)))
     return tmp
 end
-
-
-
 
 
 
@@ -189,3 +188,51 @@ end
 #filter(:exp_id => x -> x ∈ expIdSubset_list, gCSImad_df)
 
 #gCSImetrics_df = innerjoin(gCSImetrics_df, gCSImad_df, on=:exp_id)
+
+
+#### Example #4
+## exp_id = HCC78_Lapatinib_11a, KP-3_Erastin_4b, KMM-1_Dabrafenib_11d
+#e = "HCC78_Lapatinib_11a"
+#Gadfly.set_default_plot_size(4inch, 2inch)
+#viab_subset = filter(:exp_id => x -> x == e, data_df)
+#p10 = Gadfly.plot(layer(viab_subset, x=:Concentration, y=:Viability, color=:exp_id, Geom.point()),
+#                  Coord.cartesian(ymin=-10, ymax=110),
+#                  Theme(panel_stroke="black"))
+
+#subset_posterior = getBIDRAposterior("gCSI", [e])
+#postCurves = getPosteriorCurves(subset_posterior, -4, 1)
+#xDose = parse.(Float64, names(postCurves))
+
+#med_curve = median.(eachcol(postCurves))
+#upper_curve = percentile.(eachcol(postCurves), 97.5)
+#lower_curve = percentile.(eachcol(postCurves), 2.5)
+#push!(p10, layer(x=xDose, y=med_curve, color=[e], linestyle=[:dot], Geom.line()))
+        
+#mleFit = llogistic(filter(:exp_id => x -> x == e, gCSIml_df)[1, [:LDR, :HDR, :ic50, :slope]])
+#yViability = mleFit.(xDose)
+#push!(p10, layer(x=xDose, y=yViability, color=[e], Geom.line()))
+
+#push!(p10, layer(x=xDose, ymin=lower_curve, ymax=upper_curve, color=[e], alpha=[0.3], Geom.ribbon()))
+#draw(PDF(figure_prefix*"curveExample.pdf", 4inch, 2inch), p10)
+
+#Gadfly.set_default_plot_size(3inch, 2inch)
+#x = percentile(subset_posterior.HDR, [2.5, 97.5])
+#ymin = [0.,0.]
+#ymax = ymin .+ 0.04
+#hdr = filter(:exp_id => x -> x == e, gCSIml_df)[:, :HDR]
+#p11 = Gadfly.plot(subset_posterior, x=:HDR, Geom.histogram(density=true),
+#                  layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon()),
+#                  layer(xintercept=hdr, Geom.vline()),
+#                  Theme(panel_stroke="black"))
+#draw(PDF(figure_prefix*"posteriorExample_HDR.pdf", 3inch, 2inch), p11)
+
+#Gadfly.set_default_plot_size(3inch, 2inch)
+#x = percentile(subset_posterior.ic50, [2.5, 97.5])
+#ymin = [0.,0.]
+#ymax = ymin .+ 4
+#ic50 = filter(:exp_id => x -> x == e, gCSIml_df)[:, :ic50]
+#p12 = Gadfly.plot(subset_posterior, x=:ic50, Geom.histogram(density=true),
+#                  layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon()),
+#                  layer(xintercept=ic50, Geom.vline()),
+#                  Theme(panel_stroke="black"))
+#draw(PDF(figure_prefix*"posteriorExample_IC50.pdf", 3inch, 2inch), p12)
