@@ -81,7 +81,7 @@ end
 draw(PDF(figure_prefix*dt*"_std_mle_ic50.pdf", 3inch, 2inch), p)
 
 println("---> Plotting IC50 est. vs. std contour")
-mtx = kde((subset_df[:, :ic50], subset_df[:, :viability_std]))
+mtx = kde((subset_df.ic50, subset_df.viability_std))
 p = ic50_std_contour_plot(mtx, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
 draw(PDF(figure_prefix*dt*"_std_mle_ic50_contour.pdf", 3inch, 2inch), p)
 
@@ -91,80 +91,48 @@ p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2],
 draw(PDF(figure_prefix*dt*"_std_posterior_ic50.pdf", 3inch, 2inch), p)
 
 println("---> Plotting IC50 posterior vs. std contour")
-mtx = kde((subset_df[:, :ic50], subset_df[:, :viability_std]))
+mtx = kde((subset_df.ic50, subset_df.viability_std))
 p = ic50_std_contour_plot(mtx, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
 draw(PDF(figure_prefix*dt*"_std_posterior_ic50_contour.pdf", 3inch, 2inch), p)
 
 println("---> Calculating Prob. of IC50 being outside of experimental dose range")
-withinDose_prob, posterior_df
-### compare std and P(max < ic50)
-gCSIposterior_df = innerjoin(gCSIposterior_df, gCSImetrics_df[:,[:exp_id, :concentration_min, :concentration_max]], on=:exp_id)
-gCSIposterior_df[:, :withinDose] = gCSIposterior_df.concentration_min .< gCSIposterior_df.ic50 .< gCSIposterior_df.concentration_max
+withinDose_prob, posterior_df = get_prob_ic50(posterior_df, metrics_df)
 
-gCSImetrics_df[:, :withinDoseML] = gCSImetrics_df.concentration_min .< gCSImetrics_df.ic50 .< gCSImetrics_df.concentration_max
-gCSImetrics_df[:, :outsideDoseML] = .!gCSImetrics_df.withinDoseML
-
-withinDose_prob = combine(groupby(gCSIposterior_df, :exp_id), :withinDose => sum => :withinCount,
-                                                              :viability_std => unique => :viability_std)
-withinDose_prob[:, :withinProb] = withinDose_prob.withinCount ./ 4000
-withinDose_prob[:, :outsideProb] = 1. .- withinDose_prob.withinProb
-withinDose_prob = innerjoin(withinDose_prob, gCSImetrics_df[:, [:exp_id, :convergence, :outsideDoseML]], on=:exp_id)
-
+println("---> Plotting prob. vs. std")
 Gadfly.set_default_plot_size(5inch, 2inch)
-p6 = Gadfly.plot(withinDose_prob, x=:outsideProb, y=:viability_std, 
-                 Geom.hexbin(xbincount=120, ybincount=90),
+p = Gadfly.plot(withinDose_prob, x=:outsideProb, y=:viability_std, yintercept=[20],
+                 Geom.hline, Geom.hexbin(xbincount=120, ybincount=90),
                  Scale.color_continuous(colormap=scaleColor, minvalue=1),
                  Coord.cartesian(xmin=0, ymin=0, xmax=1),
                  Theme(panel_stroke="black"))
 
-correlationAnalysis(withinDose_prob.outsideProb, withinDose_prob.viability_std)
-withinDoseSubset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, withinDose_prob)
-push!(p6, layer(withinDoseSubset_df, xintercept=:outsideProb, Geom.vline()))
-push!(p6, layer(withinDoseSubset_df, yintercept=:viability_std, Geom.hline()))
-draw(PDF(figure_prefix*"std_prob_ic50.pdf", 5inch, 2inch), p6)
+if dt == datasets[1]
+    exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, withinDose_prob)
+    push!(p, layer(withinDoseSubset_df, x=:outsideProb, y=:viability_std, Geom.point()))
+end
+draw(PDF(figure_prefix*dt*"_std_prob_ic50.pdf", 5inch, 2inch), p)
 
-Gadfly.set_default_plot_size(2inch, 2inch)
-p6xa = Gadfly.plot(withinDose_prob, x=:outsideDoseML, y=:outsideProb, 
-                   Geom.boxplot(),)
-draw(PDF(figure_prefix*"boxplot_ml_prob_ic50.pdf", 2inch, 2inch), p6xa)
-p6xb = Gadfly.plot(withinDose_prob, x=:convergence, y=:outsideProb, 
-                   Geom.boxplot(),)
-draw(PDF(figure_prefix*"boxplot_conv_prob_ic50.pdf", 2inch, 2inch), p6xb)
-
-Gadfly.set_default_plot_size(3inch, 2inch)
-p6ya = Gadfly.plot(withinDose_prob, x=:viability_std, color=:convergence, 
-                   Geom.histogram(density=true),
-                   Coord.cartesian(xmin=0, xmax=60))
-draw(PDF(figure_prefix*"hist_conv_viabStd_ic50.pdf", 3inch, 2inch), p6ya)
-
-p6yb = Gadfly.plot(withinDose_prob, x=:viability_std, color=:outsideDoseML,
-                   Geom.histogram(density=true),
-                   Coord.cartesian(xmin=0, xmax=60))
-draw(PDF(figure_prefix*"hist_ml_viabStd_ic50.pdf", 3inch, 2inch), p6yb)
+println("---> Plotting prob. vs. std contour")
+mtx = kde((withinDose_prob.outsideProb, withinDose_prob.viability_std))
+p = Gadfly.plot(z=mtx.density, x=mtx.x, y=mtx.y,
+                Geom.contour(levels=8),
+                Scale.color_continuous(colormap=scaleColor, minvalue=0),
+                Coord.cartesian(xmin=0, ymin=0, xmax=1),
+                Theme(panel_stroke="black"))
+draw(PDF(figure_prefix*dt*"_std_prob_ic50_contour.pdf", 5inch, 2inch), p)
 
 
-###### MAD vs. ML estimations ##########
-gCSImad_df = combine(groupby(gCSIposterior_df, :exp_id), 
-                        :HDR => mad => :HDR_mad,
-                        :LDR => mad => :LDR_mad,
-                        :ic50 => mad => :ic50_mad)
-filter(:exp_id => x -> x ∈ expIdSubset_list, gCSImad_df)
+println("---> Plotting series of boxplot")
+pA, pA_conv, pB, pC, pC_conv = boxplots_dose_plot(withinDose_prob)
+draw(PDF(figure_prefix*dt*"_boxplot_ml_prob_ic50.pdf", 3inch, 3inch), pA)
+draw(PDF(figure_prefix*dt*"_boxplot_ml_prob_ic50_conv.pdf", 3inch, 3inch), pA_conv)
+draw(PDF(figure_prefix*dt*"boxplot_conv_prob_ic50.pdf", 3inch, 3inch), pB)
+draw(PDF(figure_prefix*dt*"boxplot_std_ml_ic50.pdf", 3inch, 3inch), pC)
+draw(PDF(figure_prefix*dt*"boxplot_std_ml_ic50_conv.pdf", 3inch, 3inch), pC_conv)
 
-gCSImetrics_df = innerjoin(gCSImetrics_df, gCSImad_df, on=:exp_id)
 
-## HDR comparison
-Gadfly.set_default_plot_size(3inch, 2inch)
-metricsSubset = filter(:HDR => x -> -50 ≤ x ≤ 150, gCSImetrics_df)
-p7 = Gadfly.plot(metricsSubset, x=:HDR, y=:HDR_mad, 
-                 Geom.hexbin(xbincount=120, ybincount=100),
-                 Scale.color_continuous(colormap=scaleColor, minvalue=1),
-                 Coord.cartesian(xmin=-50, xmax=150, ymin=0),
-                 Theme(panel_stroke="black"))
 
-expIDsubset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, gCSImetrics_df)
-push!(p7, layer(expIDsubset_df, xintercept=:HDR, Geom.vline()))
-push!(p7, layer(expIDsubset_df, yintercept=:HDR_mad, Geom.hline()))
-draw(PDF(figure_prefix*"mad_hdr.pdf", 3inch, 2inch), p7)
+
 
 ###### postDif vs. ML estimations ##########
 gCSIposteriorDiff_df = combine(groupby(gCSIposterior_df, :exp_id), 

@@ -24,6 +24,7 @@ end
 function metricZoom_subset(metrics_df, mt, lb, ub)
     tmp = filter(mt => x -> lb ≤ x ≤ ub, metrics_df)
     println("------> ", length(unique(tmp.exp_id)), " experiments out of ", length(unique(metrics_df.exp_id)), " for ", mt)
+    tmp[!,mt] = convert.(Float64, subset_df[!,mt])
     return tmp
 end
 
@@ -63,8 +64,8 @@ end
 
 function ic50_std_plot(df, lb, ub, concentrationBounds)
     Gadfly.set_default_plot_size(3inch, 2inch)
-    p = Gadfly.plot(df, x=:ic50, y=:viability_std,
-                 Geom.hexbin(xbincount=80, ybincount=80),
+    p = Gadfly.plot(df, x=:ic50, y=:viability_std, yintercept=20,
+                 Geom.hline(), Geom.hexbin(xbincount=80, ybincount=80),
                  Scale.color_continuous(colormap=scaleColor, minvalue=1),
                  Coord.cartesian(xmin=lb, xmax=ub, ymin=0),
                  Theme(panel_stroke= "black"),
@@ -99,6 +100,26 @@ withinDose_prob[:, :withinProb] = withinDose_prob.withinCount ./ 4000
 withinDose_prob[:, :outsideProb] = 1. .- withinDose_prob.withinProb
 withinDose_prob = innerjoin(withinDose_prob, metrics_df[:, [:exp_id, :convergence, :outsideDoseML]], on=:exp_id)
     return withinDose_prob, posterior_df
+end
+
+function boxplots_dose_plot(withinDose_prob)
+    Gadfly.set_default_plot_size(2inch, 2inch)
+    tmp = get_converged(withinDose_prob)
+    pA = Gadfly.plot(withinDose_prob, x=:outsideDoseML, y=:outsideProb, 
+                   Geom.boxplot(),)
+    pA_conv = Gadfly.plot(tmp, x=:outsideDoseML, y=:outsideProb, 
+                   Geom.boxplot(),)
+
+    pB = Gadfly.plot(withinDose_prob, x=:convergence, y=:outsideProb, 
+                    Geom.boxplot(),)
+
+    pC = Gadfly.plot(withinDose_prob, x=:outsideDoseML, y=:viability_std, yintercept=[20],
+                    Geom.vline(), Geom.boxplot())
+
+    pC_conv = Gadfly.plot(tmp, x=:outsideDoseML, y=:viability_std, yintercept=[20],
+                    Geom.vline(), Geom.boxplot())
+
+    return pA, pB, pC
 end
 
 function get_posterior_diff(posterior_dr, metrics_df)
