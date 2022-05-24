@@ -23,16 +23,10 @@ end
 ### given range
 function metricZoom_subset(metrics_df, mt, lb, ub)
     tmp = filter(mt => x -> lb ≤ x ≤ ub, metrics_df)
-    println("------> ", nrow(tmp), " experiments out of ", nrow(metrics_df), " for ", mt)
+    println("------> ", length(unique(tmp.exp_id)), " experiments out of ", length(unique(metrics_df.exp_id)), " for ", mt)
     return tmp
 end
 
-### Select posterior points that lay within a given range
-function posteriorZoom_subset(posterior_df, mt, lb, ub)
-    tmp = filter(mt => x -> lb ≤ x ≤ ub, posterior_df)
-    println("------> ", length(unique(tmp.exp_id)), " experiments out of ", length(unique(posterior_df.exp_id)), " for ", mt)
-    return tmp
-end
 
 ### Plot estimates vs. median with hexbin for a given range of of values
 function medianML_hexbin_plot(df, mt, lb, ub, prior)
@@ -65,6 +59,31 @@ function get_data_metrics(data_df, metrics_df)
                             :Concentration => maximum => :concentration_max)
     metrics_df = innerjoin(metrics_df, dataMetrics_df, on=:exp_id)
     return concentrationBounds, metrics_df
+end
+
+function ic50_std_plot(df, lb, ub, concentrationBounds)
+    Gadfly.set_default_plot_size(3inch, 2inch)
+    p = Gadfly.plot(df, x=:ic50, y=:viability_std,
+                 Geom.hexbin(xbincount=80, ybincount=80),
+                 Scale.color_continuous(colormap=scaleColor, minvalue=1),
+                 Coord.cartesian(xmin=lb, xmax=ub, ymin=0),
+                 Theme(panel_stroke= "black"),
+                 Guide.title("N="*string(length(unique(df.exp_id)))))
+
+    push!(p, layer(xintercept=concentrationBounds, Geom.vline(color=["black"])))
+    return p
+end
+
+function ic50_std_contour_plot(mtx, lb, ub, concentrationBounds)
+    Gadfly.set_default_plot_size(3inch, 2inch)
+    p = Gadfly.plot(z=mtx.density, x=mtx.x, y=mtx.y,
+                    Geom.contour(levels=8),
+                    Scale.color_continuous(colormap=scaleColor, minvalue=0),
+                    Coord.cartesian(xmin=lb, xmax=ub, ymin=0),
+                    Theme(panel_stroke= "black"))
+
+    push!(p, layer(xintercept=concentrationBounds, Geom.vline(color=["black"])))
+    return p
 end
 
 function get_prob_ic50(posterior_df, metrics_df)

@@ -221,24 +221,24 @@ function computeAAC(dose, viability, params)
     return aac*100
 end
 
-function getHDRprior(N)
+function get_HDR_prior(N)
     λₖ = [0.4, 0.5, 0.1]
     hdr_mm = MixtureModel([SkewNormal(0, 10, 1), Uniform(0, 100), SkewNormal(100, 20, -5)], λₖ)
     hdr_prior = rand(hdr_mm, N)
     return hdr_prior
 end
 
-function getLDRprior(N)
+function get_LDR_prior(N)
     ldr_prior = rand(Normal(100,10), N)
     return ldr_prior
 end
 
-function getIC50prior(N)
+function get_ic50_prior(N)
     ic50_prior = rand(Normal(0,10), N)
     return ic50_prior
 end
 
-function getSlopeprior(N)
+function get_slope_prior(N)
     slope_prior = rand(LogNormal(0.5, 1), N)
     return slope_prior
 end
