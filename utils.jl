@@ -1,24 +1,93 @@
-using DataFrames
+using DataFrames, HDF5
 using CSV
 using Optim, GLM, LsqFit
+using Glob
 
-function readCSV(fn, h) 
-    csv_file = CSV.File("$fn", header=h)
-    return DataFrame(csv_file); 
+############################
+data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
+
+function readCSV(fn::String, h::Bool, addExpId::Bool, expId::String) 
+    csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
+    if addExpId
+        csv_file[!,"exp_id"] = repeat([expId], nrow(csv_file))
+    end
+    return csv_file 
 end
 
-function replaceChar(df, col)
+function replaceChar(df::DataFrame, col::Symbol)
     df[!, col] .= replace.(df[:, col], " " => "_")
     df[!, col] .= replace.(df[:, col], ":" => "_")
     df[!, col] .= replace.(df[:, col], "/" => "_")
     return df
 end
 
+function getExpId_h5(dt::String)
+    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
+    h5_path = joinpath(dt_path, "hdf5")
+    fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
+    return h5read(fn_h5, "info")["exp_id"]
+end
+
+function getRawData_h5(dt::String)
+    ### Define path
+    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
+    h5_path = joinpath(dt_path, "hdf5")
+    fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
+
+    ### Get list of expID
+    expId_list = getExpId_h5(dt)
+
+    ### Import and merge all responses and concentration
+    @time data = mapreduce(e -> DataFrame(h5read(fn_h5, e)["data"], :auto), vcat, expId_list)
+    rename!(data, h5read(fn_h5, "info")["data_colNames"])
+
+    ### Get experiments listing
+    @time occ_expId = mapreduce(e -> repeat([e], size(h5read(fn_h5, e)["data"])[1]), vcat,  expId_list)
+    data[!, :exp_id] = occ_expId
+    return data
+end
+
+function getPosterior_h5(dt::String)
+    ### Define path
+    println("a. define path")
+    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
+    h5_path = joinpath(dt_path, "hdf5")
+    fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
+    
+    ### Get list of expID
+    println("b. get list of ids")
+    expId_list = getExpId_h5(dt)
+
+    ### Import and merge all posterior
+    println("c. import and merge posterior")
+    @time chains = mapreduce(e -> DataFrame(h5read(fn_h5, e)["chains"], :auto), vcat, expId_list)
+    rename!(chains, h5read(fn_h5, "info")["chains_colNames"])
+
+    ### Get experiments listing
+    println("d. add ids info")
+    @time occ_expId = mapreduce(e -> repeat([e], 4000), vcat,  expId_list)
+    chains[!, :exp_id] = occ_expId
+    return chains
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function getRawData(dt, dt_pf, h)
     data_df = DataFrame()
 
     for i in dt 
-        tmp_df = readCSV(dt_pf*i*"_selected_curves_all.csv", h)
+        tmp_df = readCSV(dt_pf*i*"_selected_curves_all.csv", h, false, "")
         tmp_df[!, :dataset] = repeat([i], nrow(tmp_df))
         tmp_df[!, :Concentration] = log10.(tmp_df[:, :Concentration])
         
@@ -49,13 +118,13 @@ end
 
 function getPairings(dt)
     prefix = "./"
-    df = readCSV(prefix*dt*"_rep2_pairing.csv", true)
+    df = readCSV(prefix*dt*"_rep2_pairing.csv", true, false, "")
     return df
 end
 
 function getMLestimates(dt, paired, pairing_df)
     mle_prefix = "/home/golem/scratch/labellec/_RESULTS/MLE_ESTIMATES/all_julia_curveFit.csv"
-    mle_data = readCSV(mle_prefix, true)
+    mle_data = readCSV(mle_prefix, true, false, "")
 
     mle_data = filter(:dataset => x -> x ∈ dt, mle_data)
     
@@ -83,7 +152,7 @@ end
 
 function getpGXestimates(dt, paired, pairing_df)
     pgx_prefix = "/home/golem/scratch/labellec/_RESULTS/MLE_PHARMACOGX/MLE_PGx/" * dt * "_estimates.csv"
-    pgx_data = readCSV(pgx_prefix, true)
+    pgx_data = readCSV(pgx_prefix, true, false, "")
     
     pgx_data = replaceChar(pgx_tmp, :exp_id)
     if paired
@@ -98,7 +167,7 @@ end
 
 function getBIDRAdiagnotics(dt, paired, pairing_df)
     bidra_prefix = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_data/"*dt*"_diagnostics.csv"
-    bidra_data = readCSV(bidra_prefix, true)
+    bidra_data = readCSV(bidra_prefix, true, false, "")
     
     if paired
         bidra_data = bidra_data[:, [:HDR, :LDR, :ic50, :slope, :σ]]
@@ -111,17 +180,27 @@ end
 function getBIDRAposterior(dt, expId_list)
     posterior_prefix = "/home/golem/scratch/labellec/_RESULTS/"*dt*"_julia_process_all/"
     
-    function getPosterior(exp) 
-        return readCSV(posterior_prefix*exp*".csv", true)
-    end
+    Files = glob("*.csv", posterior_prefix)
+    allPosterior = mapreduce(file -> readCSV(file, true, true, split(last(split(file, "/")), ".")[1]), vcat, Files)
+    #allPosterior = DataFrame.(CSV.File.(Files, header=true, ntasks=8))
+    #function getPosterior(exp) 
+    #    return readCSV(posterior_prefix*exp*".csv", true, false, "")
+    #end
     
-    data_posterior = DataFrame(HDR=[], LDR=[], ic50=[], slope=[], aac=[], σ=[], exp_id=[])
-    
-    for e in expId_list
-        tmp = getPosterior(e)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
-        tmp[!,"exp_id"] = repeat([e], nrow(tmp))
-        append!(data_posterior, tmp)
-    end
+    #data_posterior = DataFrame(HDR=[], LDR=[], ic50=[], slope=[], aac=[], σ=[], exp_id=[])
+    data_posterior = allPosterior[:, [:exp_id, :HDR, :LDR, :ic50, :slope, :aac, :σ]]
+
+    #n = length(expId_list)
+    #print("---> 0,")
+    #for i in 1:n
+    #    if i%1000 == 0
+    #        print("$i,")
+    #    end
+    #    e = expId_list[i]
+    #    tmp = getPosterior(e)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
+    #    tmp[!,"exp_id"] = repeat([e], nrow(tmp))
+    #    append!(data_posterior, tmp)
+    #end
     
     return data_posterior
     
@@ -132,8 +211,8 @@ function getPairedPosterior(dt, pairing_df)
         results_path = "/home/golem/scratch/labellec/_RESULTS/"*dt*"_julia_process_all/"
         exp1, exp2 = pair
     
-        posterior1 = readCSV(results_path*exp1*".csv", true)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
-        posterior2 = readCSV(results_path*exp2*".csv", true)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
+        posterior1 = readCSV(results_path*exp1*".csv", true, false, "")[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
+        posterior2 = readCSV(results_path*exp2*".csv", true, false, "")[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
     
         posterior1[!,:exp_id] = repeat([exp1], nrow(posterior1))
         posterior2[!,:exp_id] = repeat([exp2], nrow(posterior2))

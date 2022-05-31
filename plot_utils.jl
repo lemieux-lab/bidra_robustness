@@ -64,7 +64,7 @@ end
 
 function ic50_std_plot(df, lb, ub, concentrationBounds)
     Gadfly.set_default_plot_size(3inch, 2inch)
-    p = Gadfly.plot(df, x=:ic50, y=:viability_std, yintercept=20,
+    p = Gadfly.plot(df, x=:ic50, y=:viability_std, yintercept=[20],
                  Geom.hline(), Geom.hexbin(xbincount=80, ybincount=80),
                  Scale.color_continuous(colormap=scaleColor, minvalue=1),
                  Coord.cartesian(xmin=lb, xmax=ub, ymin=0),
