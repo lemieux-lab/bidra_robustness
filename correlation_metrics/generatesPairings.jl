@@ -1,4 +1,4 @@
-using DataFrames
+using DataFrames, HDF5
 
 include("../utils.jl")
 
@@ -12,14 +12,14 @@ info_expLabels = [:expid, :experimentIds, :exp_id]
 
 ### Helpful functions
 ### Remove characters in exp_id name
-function replaceChar(df, col)
+function replaceChar(df::DataFrame, col::Symbol)
     df[!, col] .= replace.(df[:, col], " " => "_")
     df[!, col] .= replace.(df[:, col], ":" => "_")
     df[!, col] .= replace.(df[:, col], "/" => "_")
     return df
 end
 
-function replicatesPairing(df, dt) 
+function replicatesPairing(df::DataFrame, dt::String) 
     #Remove exact same replicates in gCSI
     if dt == "gCSI"
         idx_replicates = findall(nonunique(df[:, [:Concentration, :Viability, :pairs]]))
@@ -30,9 +30,13 @@ function replicatesPairing(df, dt)
     exp_id = unique(df.exp_id)
     tmp = DataFrame(rep_1=exp_id[1:2:end], rep_2=exp_id[2:2:end])
     
-    println("---> Writing pairing files")
-    CSV.write(output_prefix*dt*"_rep2_pairing.csv", tmp)
-    
+    println("---> Writing pairing h5")
+    @time h5open(joinpath("rep2_pairing.h5"), "w") do file
+        g = create_group(file, dt)
+        g["rep_1"] = Array(tmp.rep_1)
+        g["rep_2"] = Array(tmp.rep_2)
+    end
+
     return df, tmp
 end
 
@@ -41,10 +45,10 @@ for i in 1:length(datasets)
     dt = datasets[i]
 
     ## Get viabilities and info 
-    data_df = getRawData([dt], data_prefix, true)
+    data_df = getRawData_h5(dt)
     #data_df = readCSV(data_prefix*dt*"_selected_curves_all.csv", true)
     #data_df[!, :Concentration] = log10.(data_df[:, :Concentration])
-    info_df = readCSV(info_prefix*dt*"_info.csv", true)[:, 1:3]
+    info_df = readCSV(info_prefix*dt*"_info.csv", true, false, "")[:, 1:3]
     info_df = replaceChar(info_df, info_expLabels[i])
 
     ## Create meta df and print info

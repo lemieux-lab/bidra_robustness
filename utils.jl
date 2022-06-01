@@ -3,8 +3,6 @@ using CSV
 using Optim, GLM, LsqFit
 using Glob
 
-############################
-data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
 
 function readCSV(fn::String, h::Bool, addExpId::Bool, expId::String) 
     csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
@@ -22,6 +20,7 @@ function replaceChar(df::DataFrame, col::Symbol)
 end
 
 function getExpId_h5(dt::String)
+    data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
     dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
     h5_path = joinpath(dt_path, "hdf5")
     fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
@@ -30,6 +29,7 @@ end
 
 function getRawData_h5(dt::String)
     ### Define path
+    data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
     dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
     h5_path = joinpath(dt_path, "hdf5")
     fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
@@ -50,6 +50,7 @@ end
 function getPosterior_h5(dt::String)
     ### Define path
     println("a. define path")
+    data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
     dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
     h5_path = joinpath(dt_path, "hdf5")
     fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
@@ -70,59 +71,22 @@ function getPosterior_h5(dt::String)
     return chains
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-function getRawData(dt, dt_pf, h)
-    data_df = DataFrame()
-
-    for i in dt 
-        tmp_df = readCSV(dt_pf*i*"_selected_curves_all.csv", h, false, "")
-        tmp_df[!, :dataset] = repeat([i], nrow(tmp_df))
-        tmp_df[!, :Concentration] = log10.(tmp_df[:, :Concentration])
-        
-        maxThresh = 200
-        minThresh = -50
-        id_extreme = unique(filter(:Viability => x -> x > maxThresh || x < minThresh, tmp_df)[:, :exp_id])
-        tmp_df = filter(:exp_id => x -> x ∉ id_extreme, tmp_df)
-        
-        append!(data_df, replaceChar(tmp_df, :exp_id))
-    end
-
-    ### Print summary
-    for i in dt
-        tmp = filter(:dataset => x -> x == i, data_df)
-        println(i, " : ", length(unique(tmp.exp_id)), " experiments")
-    end
-    println("------------------------------------")
-    println("TOTAL : ", length(unique(data_df.exp_id)), " experiments")
-    println()
-
-    return data_df
-end
-
-function llogistic(param) 
+function llogistic(param::Array) 
     LDR, HDR, ic50, slope = param    
     return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
 end
 
-function getPairings(dt)
+function getPairings_h5(dt::String)
+    df = DataFrame(h5read(, e)["data"], :auto)
+end
+
+function getPairings(dt::String)
     prefix = "./"
     df = readCSV(prefix*dt*"_rep2_pairing.csv", true, false, "")
     return df
 end
 
-function getMLestimates(dt, paired, pairing_df)
+function getMLestimates(dt::String, paired::Bool, pairing_df::DataFrame)
     mle_prefix = "/home/golem/scratch/labellec/_RESULTS/MLE_ESTIMATES/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true, false, "")
 
@@ -175,35 +139,6 @@ function getBIDRAdiagnotics(dt, paired, pairing_df)
     end
 
     return bidra_data
-end
-
-function getBIDRAposterior(dt, expId_list)
-    posterior_prefix = "/home/golem/scratch/labellec/_RESULTS/"*dt*"_julia_process_all/"
-    
-    Files = glob("*.csv", posterior_prefix)
-    allPosterior = mapreduce(file -> readCSV(file, true, true, split(last(split(file, "/")), ".")[1]), vcat, Files)
-    #allPosterior = DataFrame.(CSV.File.(Files, header=true, ntasks=8))
-    #function getPosterior(exp) 
-    #    return readCSV(posterior_prefix*exp*".csv", true, false, "")
-    #end
-    
-    #data_posterior = DataFrame(HDR=[], LDR=[], ic50=[], slope=[], aac=[], σ=[], exp_id=[])
-    data_posterior = allPosterior[:, [:exp_id, :HDR, :LDR, :ic50, :slope, :aac, :σ]]
-
-    #n = length(expId_list)
-    #print("---> 0,")
-    #for i in 1:n
-    #    if i%1000 == 0
-    #        print("$i,")
-    #    end
-    #    e = expId_list[i]
-    #    tmp = getPosterior(e)[:, [:HDR, :LDR, :ic50, :slope, :aac, :σ]]
-    #    tmp[!,"exp_id"] = repeat([e], nrow(tmp))
-    #    append!(data_posterior, tmp)
-    #end
-    
-    return data_posterior
-    
 end
 
 function getPairedPosterior(dt, pairing_df)

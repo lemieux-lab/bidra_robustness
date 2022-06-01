@@ -8,7 +8,7 @@ include("plot_utils.jl")
 
 ###### Global Var ####
 figure_prefix = "_generated_figures/methods_comparison/"
-datasets = ["gCSI"] #"gCSI", "gray", hea 
+datasets = ["gray", "gCSI", "ctrpv2"]  
 eff_metrics = [:HDR, :LDR, :ic50, :slope, :aac]
 metrics_bounds = Dict(:HDR=>[-50,150], :LDR=>[70,150], :ic50=>[-10,10], :slope=>[0,10], :aac=>[0,100])
 expIdSubset_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b", "HCC78_Lapatinib_11a"]
@@ -27,13 +27,13 @@ for i in 1:length(datasets)
     dt = datasets[i]
     println("**********************", dt, "**********************")
     println("1. Get data and metrics")
-    @time data_df = getRawData([dt], "/home/golem/scratch/labellec/_DATA/", true)
+    @time data_df = getRawData_h5(dt)
     @time expId_list = getExpId_h5(dt)#unique(data_df.exp_id)
 
     @time ml_df = getMLestimates([dt], false, missing)
     tmp = get_converged(ml_df)
 
-    @time posterior_df = getBIDRAposterior(dt, expId_list)
+    @time posterior_df = getPosterior_h5(dt)#getBIDRAposterior(dt, expId_list)
     #posterior_df = innerjoin(posterior_df, ml_df[:,[:exp_id, :convergence]], on=:exp_id)
 
 
