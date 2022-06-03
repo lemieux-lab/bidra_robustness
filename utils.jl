@@ -20,34 +20,35 @@ function replaceChar(df::DataFrame, col::Symbol)
 end
 
 function getExpId_h5(dt::String)
-    data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
-    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
-    h5_path = joinpath(dt_path, "hdf5")
-    fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
+    fn_h5 = "data/$dt"*"_complete.h5"
     return h5read(fn_h5, "info")["exp_id"]
 end
 
 function getRawData_h5(dt::String)
     ### Define path
-    data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
-    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
-    h5_path = joinpath(dt_path, "hdf5")
-    fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
+    fn_h5 = "data/$dt"*"_complete.h5"
 
     ### Get list of expID
     expId_list = getExpId_h5(dt)
 
     ### Import and merge all responses and concentration
-    @time data = mapreduce(e -> DataFrame(h5read(fn_h5, e)["data"], :auto), vcat, expId_list)
-    rename!(data, h5read(fn_h5, "info")["data_colNames"])
+    file = h5open(fn_h5, "r")
+    println("Import data")
+    @time data = map(e -> read(file, e)["data"], expId_list)
+    println("Import exp_id")
+    @time occ_expId = map(e -> repeat([e], size(read(file, e)["data"])[1]), expId_list)
+    println("Import column names")
+    @time data_colName = read(file, "info")["data_colNames"]
+    close(file)
 
-    ### Get experiments listing
-    @time occ_expId = mapreduce(e -> repeat([e], size(h5read(fn_h5, e)["data"])[1]), vcat,  expId_list)
-    data[!, :exp_id] = occ_expId
+    ### Build dataframe
+    data_df = DataFrame(data, :auto)
+    rename!(data_df, data_colName)
+    data_df[!, :exp_id] = occ_expId
     return data
 end
 
-function getPosterior_h5(dt::String)
+function getPosterior_h5_NOT(dt::String)
     ### Define path
     println("a. define path")
     data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
@@ -61,7 +62,15 @@ function getPosterior_h5(dt::String)
 
     ### Import and merge all posterior
     println("c. import and merge posterior")
-    @time chains = mapreduce(e -> DataFrame(h5read(fn_h5, e)["chains"], :auto), vcat, expId_list)
+    chains = DataFrame()
+    n = length(expId_list)
+    s = 100
+
+    for i in 1:s:n
+        j = i+s-1 <= n ? i+s-1 : n
+        tmp = mapreduce(e -> DataFrame(h5read(fn_h5, e)["chains"], :auto), vcat, expId_list[i:j])
+        chains = vcat(chains, tmp)
+    end
     rename!(chains, h5read(fn_h5, "info")["chains_colNames"])
 
     ### Get experiments listing
@@ -71,22 +80,66 @@ function getPosterior_h5(dt::String)
     return chains
 end
 
+function getPosterior_h5(dt::String, expId_list::Array)
+    ### Define path
+    #println("a. define path")
+    data_prefix = "/scratch/"#"/home/golem/scratch/labellec/_RESULTS/"
+    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
+    h5_path = joinpath(dt_path, "hdf5")
+    fn_h5 = joinpath(data_prefix, "$dt"*"_complete.h5")
+
+    ### Import and merge all posterior
+    #println("c. import and merge posterior")
+    #chains = DataFrame()
+    #n = length(expId_list)
+    #s = 100
+
+    file = h5open(fn_h5, "r")
+    chains = map(e -> read(file, e)["chains"], expId_list)
+    chains_colName = read(file, "info")["chains_colNames"]
+    close(file)
+
+    chains_mtx = vcat(chains...)
+    chains_df = DataFrame(chains_mtx, :auto)
+    rename!(chains_df, chains_colName)
+
+    ### Get experiments listing
+    #println("d. add ids info")
+    occ_expId = mapreduce(e -> repeat([e], 4000), vcat,  expId_list)
+    chains_df[!, :exp_id] = occ_expId
+    return chains_df
+end
+
+
 function llogistic(param::Array) 
     LDR, HDR, ic50, slope = param    
     return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
 end
 
 function getPairings_h5(dt::String)
-    df = DataFrame(h5read(, e)["data"], :auto)
-end
-
-function getPairings(dt::String)
-    prefix = "./"
-    df = readCSV(prefix*dt*"_rep2_pairing.csv", true, false, "")
+    df = DataFrame(h5read("correlation_metrics/rep2_pairing.h5", dt))
     return df
 end
 
-function getMLestimates(dt::String, paired::Bool, pairing_df::DataFrame)
+function getPairedPosterior_h5(dt::String)
+    pairings_df = getPairings_h5(dt)
+    posterior_rep1 = getPosterior_h5(dt, Array(pairings_df.rep_1))
+    rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
+
+    posterior_rep2 = getPosterior_h5(dt, Array(pairings_df.rep_2))
+    rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
+
+    return hcat(posterior_rep1, posterior_rep2)
+end
+
+function getMLestimates(dt::Array,)
+    mle_prefix = "/home/golem/scratch/labellec/_RESULTS/MLE_ESTIMATES/all_julia_curveFit.csv"
+    mle_data = readCSV(mle_prefix, true, false, "")
+    mle_data = filter(:dataset => x -> x ∈ dt, mle_data)
+    return mle_data
+end
+
+function getMLestimates(dt::Array, paired::Bool, pairing_df::DataFrame)
     mle_prefix = "/home/golem/scratch/labellec/_RESULTS/MLE_ESTIMATES/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true, false, "")
 

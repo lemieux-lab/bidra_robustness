@@ -31,7 +31,7 @@ function replicatesPairing(df::DataFrame, dt::String)
     tmp = DataFrame(rep_1=exp_id[1:2:end], rep_2=exp_id[2:2:end])
     
     println("---> Writing pairing h5")
-    @time h5open(joinpath("rep2_pairing.h5"), "w") do file
+    @time h5open(joinpath("rep2_pairing.h5"), "r+") do file
         g = create_group(file, dt)
         g["rep_1"] = Array(tmp.rep_1)
         g["rep_2"] = Array(tmp.rep_2)
@@ -40,14 +40,16 @@ function replicatesPairing(df::DataFrame, dt::String)
     return df, tmp
 end
 
+### Init h5 file
+@time h5open(joinpath("rep2_pairing.h5"), "w") do file
+end
+
 ### Loop through all 3 datasets
 for i in 1:length(datasets)
     dt = datasets[i]
-
+    
     ## Get viabilities and info 
     data_df = getRawData_h5(dt)
-    #data_df = readCSV(data_prefix*dt*"_selected_curves_all.csv", true)
-    #data_df[!, :Concentration] = log10.(data_df[:, :Concentration])
     info_df = readCSV(info_prefix*dt*"_info.csv", true, false, "")[:, 1:3]
     info_df = replaceChar(info_df, info_expLabels[i])
 
