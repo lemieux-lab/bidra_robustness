@@ -8,7 +8,7 @@ include("plot_utils.jl")
 
 ###### Global Var ####
 figure_prefix = "_generated_figures/methods_comparison/"
-datasets = ["gray", "gCSI", "ctrpv2"]  
+datasets = ["ctrpv2"]#["gray", "gCSI", "ctrpv2"]  
 eff_metrics = [:HDR, :LDR, :ic50, :slope, :aac]
 metrics_bounds = Dict(:HDR=>[-50,150], :LDR=>[70,150], :ic50=>[-10,10], :slope=>[0,10], :aac=>[0,100])
 expIdSubset_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b", "HCC78_Lapatinib_11a"]

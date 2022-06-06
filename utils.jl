@@ -24,76 +24,44 @@ function getExpId_h5(dt::String)
     return h5read(fn_h5, "info")["exp_id"]
 end
 
-function getRawData_h5(dt::String)
+function getRawData_h5(dt::String, localVar::Bool)
     ### Define path
-    fn_h5 = "data/$dt"*"_complete.h5"
+    if localVar
+        fn_h5 = "data/local_$dt"*"_complete.h5"
+    else
+        fn_h5 = "data/$dt"*"_complete.h5"
+    end
 
     ### Get list of expID
     expId_list = getExpId_h5(dt)
 
     ### Import and merge all responses and concentration
     file = h5open(fn_h5, "r")
-    println("Import data")
-    @time data = map(e -> read(file, e)["data"], expId_list)
-    println("Import exp_id")
-    @time occ_expId = map(e -> repeat([e], size(read(file, e)["data"])[1]), expId_list)
-    println("Import column names")
-    @time data_colName = read(file, "info")["data_colNames"]
+    data = map(e -> read(file, e)["data"], expId_list)
+    occ_expId = map(e -> repeat([e], size(read(file, e)["data"])[1]), expId_list)
+    data_colName = read(file, "info")["data_colNames"]
     close(file)
 
     ### Build dataframe
-    data_df = DataFrame(data, :auto)
+    data_mtx = vcat(data...)
+    data_df = DataFrame(data_mtx, :auto)
     rename!(data_df, data_colName)
-    data_df[!, :exp_id] = occ_expId
-    return data
+    data_df[!, :exp_id] = vcat(occ_expId...)
+    return data_df
 end
 
-function getPosterior_h5_NOT(dt::String)
+function getPosterior_h5(dt::String, localVar::Bool)
     ### Define path
-    println("a. define path")
-    data_prefix = "/home/golem/scratch/labellec/_RESULTS/"
-    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
-    h5_path = joinpath(dt_path, "hdf5")
-    fn_h5 = joinpath(h5_path, "$dt"*"_complete.h5")
-    
+    if localVar 
+        fn_h5 = "data/local_$dt"*"_complete.h5"
+    else
+        fn_h5 = "data/$dt"*"_complete.h5"
+    end
+
     ### Get list of expID
-    println("b. get list of ids")
     expId_list = getExpId_h5(dt)
 
     ### Import and merge all posterior
-    println("c. import and merge posterior")
-    chains = DataFrame()
-    n = length(expId_list)
-    s = 100
-
-    for i in 1:s:n
-        j = i+s-1 <= n ? i+s-1 : n
-        tmp = mapreduce(e -> DataFrame(h5read(fn_h5, e)["chains"], :auto), vcat, expId_list[i:j])
-        chains = vcat(chains, tmp)
-    end
-    rename!(chains, h5read(fn_h5, "info")["chains_colNames"])
-
-    ### Get experiments listing
-    println("d. add ids info")
-    @time occ_expId = mapreduce(e -> repeat([e], 4000), vcat,  expId_list)
-    chains[!, :exp_id] = occ_expId
-    return chains
-end
-
-function getPosterior_h5(dt::String, expId_list::Array)
-    ### Define path
-    #println("a. define path")
-    data_prefix = "/scratch/"#"/home/golem/scratch/labellec/_RESULTS/"
-    dt_path = joinpath(data_prefix, "$dt"*"_julia_process_all")
-    h5_path = joinpath(dt_path, "hdf5")
-    fn_h5 = joinpath(data_prefix, "$dt"*"_complete.h5")
-
-    ### Import and merge all posterior
-    #println("c. import and merge posterior")
-    #chains = DataFrame()
-    #n = length(expId_list)
-    #s = 100
-
     file = h5open(fn_h5, "r")
     chains = map(e -> read(file, e)["chains"], expId_list)
     chains_colName = read(file, "info")["chains_colNames"]
@@ -104,12 +72,32 @@ function getPosterior_h5(dt::String, expId_list::Array)
     rename!(chains_df, chains_colName)
 
     ### Get experiments listing
-    #println("d. add ids info")
-    occ_expId = mapreduce(e -> repeat([e], 4000), vcat,  expId_list)
-    chains_df[!, :exp_id] = occ_expId
+    chains_df[!, :exp_id] = repeat(expId_list, inner=4000)
     return chains_df
 end
 
+function getPosterior_h5(dt::String, localVar::Bool, expId_list::Array)
+    ### Define path
+    if localVar 
+        fn_h5 = "data/local_$dt"*"_complete.h5"
+    else
+        fn_h5 = "data/$dt"*"_complete.h5"
+    end
+
+    ### Import and merge all posterior
+    file = h5open(fn_h5, "r")
+    chains = map(e -> read(file, e)["chains"], expId_list)
+    chains_colName = read(file, "info")["chains_colNames"]
+    close(file)
+
+    chains_mtx = vcat(chains...)
+    chains_df = DataFrame(chains_mtx, :auto)
+    rename!(chains_df, chains_colName)
+
+    ### Get experiments listing
+    chains_df[!, :exp_id] = repeat(expId_list, inner=4000)
+    return chains_df
+end
 
 function llogistic(param::Array) 
     LDR, HDR, ic50, slope = param    
@@ -123,10 +111,10 @@ end
 
 function getPairedPosterior_h5(dt::String)
     pairings_df = getPairings_h5(dt)
-    posterior_rep1 = getPosterior_h5(dt, Array(pairings_df.rep_1))
+    posterior_rep1 = getPosterior_h5(dt, true, Array(pairings_df.rep_1))
     rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
 
-    posterior_rep2 = getPosterior_h5(dt, Array(pairings_df.rep_2))
+    posterior_rep2 = getPosterior_h5(dt, true, Array(pairings_df.rep_2))
     rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
 
     return hcat(posterior_rep1, posterior_rep2)
