@@ -27,16 +27,14 @@ for i in 1:length(datasets)
     dt = datasets[i]
     println("**********************", dt, "**********************")
     println("1. Get data and metrics")
-    @time data_df = getRawData_h5(dt)
-    @time expId_list = getExpId_h5(dt)#unique(data_df.exp_id)
+    @time data_df = getRawData_h5(dt, false)
+    @time expId_list = getExpId_h5(dt)
 
     @time ml_df = getMLestimates([dt])
     tmp = get_converged(ml_df)
 
-    @time posterior_df = getPosterior_h5(dt)#getBIDRAposterior(dt, expId_list)
-    #posterior_df = innerjoin(posterior_df, ml_df[:,[:exp_id, :convergence]], on=:exp_id)
-
-
+    @time posterior_df = getPosterior_h5(dt, false)
+    
     ###### Median vs. ML estimations ##########
     println("2. Comparing LM estimate to posterior median")
     metrics_df = get_median(posterior_df, eff_metrics, ml_df)
@@ -70,7 +68,8 @@ for i in 1:length(datasets)
     ### compare ic50 estimation to std
     println("---> Plotting IC50 est. vs. std")
     subset_df = metricZoom_subset(metrics_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2])
-    p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
+    println("------> Size of subset: ", size(subset_df))
+    #p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
 
     if dt == datasets[1]
         exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, subset_df)

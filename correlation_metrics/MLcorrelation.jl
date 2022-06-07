@@ -5,49 +5,68 @@ using Cairo, Fontconfig
 
 include("../utils.jl")
 
-results_prefix = "../_generated_data/"
-
 ### Define dataset to analyze
 dt = ARGS[1]
 #dt = "gCSI"
 #dt = "gray"
 #dt = "ctrpv2"
 
-pairings_df = getPairings(dt)
-mlPaired_df = getMLestimates([dt], true, pairings_df)
+pairings_df = getPairings_h5(dt)
+mlPaired_df = getMLestimates([dt], pairings_df)
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 ### replace Inf aac by Nan
 mlPaired_df[!, :aac_rep_1] = replace(mlPaired_df.aac_rep_1, Inf => NaN, -Inf => NaN)
 mlPaired_df[!, :aac_rep_2] = replace(mlPaired_df.aac_rep_2, Inf => NaN, -Inf => NaN)
 
-for pr in bidra_params
-    rep1 = Symbol(pr,"_rep_1")
-    rep2 = Symbol(pr,"_rep_2")
+function doCorrelation(df::DataFrame, description::String)
+    results_prefix = "_generated_data/"
 
-    tmp = filter(rep1 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), mlPaired_df)
-    tmp = filter(rep2 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), tmp)
+    for pr in bidra_params
+        rep1 = Symbol(pr,"_rep_1")
+        rep2 = Symbol(pr,"_rep_2")
 
-    mlCorr_df = correlationAnalysis(tmp[:,rep1], tmp[:,rep2])
-    mlCorr_df[:, :N] = [nrow(tmp)]
-    mlCorr_df[:, :dataset] = [dt*"_all"]
-    mlCorr_df[:, :param] = [pr]
+        tmp = filter(rep1 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), df)
+        tmp = filter(rep2 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), tmp)
 
-    CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=true)
+        mlCorr_df = correlationAnalysis(tmp[:,rep1], tmp[:,rep2])
+        mlCorr_df[:, :N] = [nrow(tmp)]
+        mlCorr_df[:, :dataset] = [dt]
+        mlCorr_df[:, :param] = [pr]
+        mlCorr_df[:, :description] = [description]
+
+        CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=true)
+    end
 end
 
+
+println("Correlation for all pairs")
+@time doCorrelation(mlPaired_df, "all pairs")
+
+println("Correlation for converged pairs")
 subset_converged = filter([:convergence_rep_1, :convergence_rep_2] => (a, b) -> a + b == 2, mlPaired_df)
-for pr in bidra_params
-    rep1 = Symbol(pr,"_rep_1")
-    rep2 = Symbol(pr,"_rep_2")
+println("There are ", nrow(subset_converged), " pairs for which both experiments converged")
+@time doCorrelation(subset_converged, "converged pairs")
 
-    tmp = filter(rep1 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), subset_converged)
-    tmp = filter(rep2 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), tmp)
+println()
+println("Get data, SD, and group")
+data_df = getRawData_h5(dt, false)
+sd_df = combine(groupby(data_df, :exp_id), :Viability => std => :std_viability)
+expId_complete = sd_df[sd_df.std_viability .>= 20, :exp_id]
+expId_incomplete = sd_df[sd_df.std_viability .< 20, :exp_id]
+pairingComplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_complete && y ∈ expId_complete, pairings_df)
+pairingIncomplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete && y ∈ expId_incomplete, pairings_df)
+pairingMixte_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete || y ∈ expId_incomplete, pairings_df)
 
-    mlCorr_df = correlationAnalysis(tmp[:,rep1], tmp[:,rep2])
-    mlCorr_df[:, :N] = [nrow(tmp)]
-    mlCorr_df[:, :dataset] = [dt*"_converge"]
-    mlCorr_df[:, :param] = [pr]
+mlComplete_df = getMLestimates([dt], pairingComplete_df)
+mlIncomplete_df = getMLestimates([dt], pairingIncomplete_df)
+mlMixte_df = getMLestimates([dt], pairingMixte_df)
 
-    CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=true)
-end
+println("Correlation for complete pairs")
+@time doCorrelation(mlComplete_df, "complete pairs")
+
+println("Correlation for incomplete pairs")
+@time doCorrelation(mlIncomplete_df, "incomplete pairs")
+
+println("Correlation for mixte pairs")
+@time doCorrelation(mlMixte_df, "mixte pairs")
