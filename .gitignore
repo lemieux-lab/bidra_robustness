@@ -8,3 +8,9 @@
 *.out
 nohup.out
 compound_characterization/nohup.out
+
+## Repo
+untracked_misc/
+data/
+_generated_data/
+_generated_figures/
