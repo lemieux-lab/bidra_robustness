@@ -6,7 +6,7 @@ include("../utils.jl")
 ### Gloab variables
 results_prefix = "_generated_data/"
 datasets = ["gray", "gCSI", "ctrpv2"]
-bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
+bidra_params = ["LDR", "HDR", "ic50", "slope"]
 
 function randomPairings(dt::String, n::Int64, expID_list::Array, rep::Int64, description::String)
     println("------  Generate random exp_id list")
@@ -50,7 +50,7 @@ for i in 1:length(datasets)
 
     println("Get ML estimates")
     mlPaired_df = getMLestimates([dt], pairings_df)
-    pairingConverge_df = filter([:convergence_rep_1, :convergence_rep_2] => (a, b) -> a + b == 2, mlPaired_df)
+    pairingConverge_df = filter([:convergence_rep1, :convergence_rep2] => (a, b) -> a + b == 2, mlPaired_df)
 
     N = [nrow(df)*2 for df in [pairings_df, pairingComplete_df, pairingIncomplete_df, pairingMixte_df, pairingConverge_df]]
 
@@ -72,6 +72,6 @@ for i in 1:length(datasets)
         println("--- Mixte pairs")
         randomPairings(dt, N[4], expId_list_mixte, i, "mixte pairs")
         println("--- Converge pairs")
-        randomPairings(dt, N[4], expId_list_mixte, i, "converge pairs")
+        randomPairings(dt, N[5], expId_list_converge, i, "converge pairs")
     end
 end
