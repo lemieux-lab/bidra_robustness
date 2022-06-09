@@ -134,12 +134,12 @@ function getMLestimates(dt::Array, pairing_df::DataFrame)
     mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
     mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset, :convergence]]
 
-    mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep_1"))
-    mle_tmp = innerjoin(mle_tmp, mle_data, on=:rep_2 => :exp_id, renamecols=("" => "_rep_2"))
+    mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep1"))
+    mle_tmp = innerjoin(mle_tmp, mle_data, on=:rep_2 => :exp_id, renamecols=("" => "_rep2"))
     
-    mle_data = filter(row -> !isnan(row.LDR_rep_1) && !isnan(row.LDR_rep_2), mle_tmp)
-    mle_data[!, :aac_rep_1] = replace(mle_data.aac_rep_1, Inf => NaN, -Inf => NaN)
-    mle_data[!, :aac_rep_2] = replace(mle_data.aac_rep_2, Inf => NaN, -Inf => NaN)
+    mle_data = filter(row -> !isnan(row.LDR_rep1) && !isnan(row.LDR_rep2), mle_tmp)
+    mle_data[!, :aac_rep_1] = replace(mle_data.aac_rep1, Inf => NaN, -Inf => NaN)
+    mle_data[!, :aac_rep_2] = replace(mle_data.aac_rep2, Inf => NaN, -Inf => NaN)
     
     return mle_data
 end
