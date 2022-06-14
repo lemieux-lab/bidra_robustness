@@ -48,7 +48,7 @@ for i in 1:length(datasets)
 
         if dt == datasets[1]
             exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, metrics_df)
-            push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_median"), y=em, Geom.point()))
+            push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_median"), y=em, Geom.point(), order=1))
         end
 
         draw(PDF(figure_prefix*dt*"_med_mle_"*string(em)*".pdf", 3inch, 2inch), p)
@@ -69,11 +69,11 @@ for i in 1:length(datasets)
     println("---> Plotting IC50 est. vs. std")
     subset_df = metricZoom_subset(metrics_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2])
     println("------> Size of subset: ", size(subset_df))
-    #p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
+    p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
 
     if dt == datasets[1]
         exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, subset_df)
-        push!(p, layer(exp_subset_df, x=:ic50, y=:viability_std, Geom.point()))
+        push!(p, layer(exp_subset_df, x=:ic50, y=:viability_std, Geom.point(), order=1))
     end
 
     draw(PDF(figure_prefix*dt*"_std_mle_ic50.pdf", 3inch, 2inch), p)
@@ -86,6 +86,13 @@ for i in 1:length(datasets)
     println("---> Plotting IC50 posterior vs. std")
     subset_df = metricZoom_subset(posterior_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2])
     p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
+    if dt == datasets[1]
+        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, subset_df)
+        tmp_interval = combine(groupby(exp_subset_df, :exp_id), :ic50 => (x -> percentile(x, [2.5, 97.5])) => :interval)
+        tmp_std = combine(groupby(exp_subset_df, :exp_id), :viability_std => unique => :viability_std)
+        tmp = innerjoin(tmp_interval, tmp_std, on=:exp_id)
+        push!(p, layer(tmp, x=:interval, y=:viability_std, group=:exp_id, Geom.line(), order=1))
+    end
     draw(PDF(figure_prefix*dt*"_std_posterior_ic50.pdf", 3inch, 2inch), p)
 
     println("---> Plotting IC50 posterior vs. std contour")
@@ -141,7 +148,7 @@ for i in 1:length(datasets)
 
         if dt == datasets[1]
             exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, metrics_df)
-            push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_postDiff"), y=em, Geom.point()))
+            push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_postDiff"), y=em, Geom.point(), order=1))
         end
 
         draw(PDF(figure_prefix*dt*"_postDiff_ml_"*string(em)*".pdf", 3inch, 2inch), p)
