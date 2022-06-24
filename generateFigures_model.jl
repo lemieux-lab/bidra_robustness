@@ -6,11 +6,17 @@ using Cairo, Fontconfig
 include("utils.jl")
 
 ###### Global Var ####
-figure_prefix = "_generated_figures/01_bayseianModel/"
+figure_prefix = "_generated_figures/supp_fig/models/"
 
 ###### Data ##########
-data_prefix = "/home/golem/scratch/labellec/_DATA/"
-data_df = getRawData(["gCSI", "gray", "ctrpv2"], data_prefix, true)
+data_df = DataFrame()
+for dt in ["gray", "gCSI", "ctrpv2"]
+        println(dt)
+        @time tmp = getRawData_h5(dt, false)
+        tmp[!, :dataset] = repeat([dt], nrow(tmp))
+        data_df = vcat(data_df, tmp)
+        println()
+end
 
 ### example experiments from gCSI
 expId_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b"]
@@ -37,8 +43,9 @@ ymax = ymin .+ 0.20
 p1 = Gadfly.plot(maxConcentration_df, x=:Viability, color=:dataset, 
                 Geom.histogram(position=:stack, bincount=200, density=true),
                 layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon()), 
-                Coord.cartesian(xmin=-20, xmax=150))
-draw(PDF(figure_prefix*"viability_max_conc.pdf", 4inch, 3inch), p1)
+                Coord.cartesian(xmin=-20, xmax=150),
+                Theme(panel_stroke="black"))
+draw(PDF(figure_prefix*"viability_max_conc_LARGE.pdf", 4inch, 3inch), p1)
 
 ## Draw Viability of min [] distributions per dataset
 Gadfly.set_default_plot_size(4inch, 3inch)
@@ -48,8 +55,9 @@ ymax = ymin .+ 0.20
 p2 = Gadfly.plot(minConcentration_df, x=:Viability, color=:dataset, 
                 Geom.histogram(position=:stack, bincount=200, density=true),
                 layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon()),
-                Coord.cartesian(xmin=0, xmax=150))
-draw(PDF(figure_prefix*"viability_min_conc.pdf", 4inch, 3inch), p2)
+                Coord.cartesian(xmin=0, xmax=150),
+                Theme(panel_stroke="black"))
+draw(PDF(figure_prefix*"viability_min_conc_LARGE.pdf", 4inch, 3inch), p2)
 
 ## Draw [] distributions per dataset
 Gadfly.set_default_plot_size(4inch, 3inch)
@@ -59,8 +67,9 @@ ymax = ymin .+ 2.
 p3 = Gadfly.plot(data_df, x=:Concentration, color=:dataset,
                 Geom.histogram(position=:stack, density=true),
                 layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon()),
-                Coord.cartesian(xmin=-7))
-draw(PDF(figure_prefix*"concentration.pdf", 4inch, 3inch), p3)
+                Coord.cartesian(xmin=-7),
+                Theme(panel_stroke="black"))
+draw(PDF(figure_prefix*"concentration_LARGE.pdf", 4inch, 3inch), p3)
 
 
 ### Prior density plots
@@ -71,8 +80,9 @@ x = percentile(data_df.Concentration, [2.5, 97.5])
 ymin = [0.,0.]
 ymax = ymin .+ 0.04
 p4 = Gadfly.plot(layer(x=ic50_prior, Geom.density(bandwidth=1)),
-                 layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon() ))
-draw(PDF(figure_prefix*"ic50_prior.pdf", 4inch, 3inch), p4)
+                 layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon(),
+                 Theme(panel_stroke="black")))
+draw(PDF(figure_prefix*"ic50_prior_LARGE.pdf", 4inch, 3inch), p4)
 
 ## LDR
 ldr_prior = rand(Normal(100,10), N)
@@ -80,7 +90,8 @@ x = percentile(minConcentration_df.Viability, [2.5, 97.5])
 ymin = [0.,0.]
 ymax = ymin .+ 0.04
 p5 = Gadfly.plot(layer(x=ldr_prior, Geom.density(bandwidth=1)),
-                 layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon() ))
+                 layer(x=x, ymin=ymin, ymax=ymax, Geom.ribbon(),
+                 ))
 draw(PDF(figure_prefix*"ldr_prior.pdf", 4inch, 3inch), p5)
 
 ## HDR

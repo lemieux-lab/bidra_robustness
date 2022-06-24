@@ -49,7 +49,7 @@ for i in 1:length(datasets)
     dt = datasets[i]
     
     ## Get viabilities and info 
-    data_df = getRawData_h5(dt)
+    data_df = getRawData_h5(dt, false)
     info_df = readCSV(info_prefix*dt*"_info.csv", true, false, "")[:, 1:3]
     info_df = replaceChar(info_df, info_expLabels[i])
 

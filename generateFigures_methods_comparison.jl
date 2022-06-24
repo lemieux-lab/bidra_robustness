@@ -146,7 +146,7 @@ for i in 1:length(datasets)
         em_subset_df = metricZoom_subset(metrics_df, em, metrics_bounds[em][1], metrics_bounds[em][2])
         p = ml_post_diff_plot(em_subset_df, em, metrics_bounds[em][1], metrics_bounds[em][2])
 
-        if dt == datasets[1]
+        if dt == "gCSI"
             exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, metrics_df)
             push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_postDiff"), y=em, Geom.point(), order=1))
         end

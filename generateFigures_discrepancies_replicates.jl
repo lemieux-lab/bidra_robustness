@@ -48,9 +48,73 @@ draw(PDF("$figure_prefix"*"all_dt_correlations.pdf", 6inch, 4inch), p)
 
 ### Correlations of random pairings
 bidra_randomRep = readCSV("_generated_data/bidraRandomCorrelation.csv", true, false, "")
+bidra_randomRep_qq = filter(:method => x -> x == "qq", bidra_randomRep)
+bidra_randomRep_qq = filter(:param => x -> x != "aac", bidra_randomRep_qq)
+
+ml_randomRep = readCSV("_generated_data/mlRandomCorrelations.csv", true, false, "")
+ml_randomRep[!, :description] = ml_randomRep[:, :method]
+ml_randomRep[!, :method] = repeat(["ML"], nrow(ml_randomRep))
+
+randomRep_compare = vcat(bidra_randomRep_qq, ml_randomRep)
 
 Gadfly.set_default_plot_size(10inch, 6inch)
-p = Gadfly.plot(bidra_randomRep, x=:description, y=:rₛ, color=:dataset, xgroup=:param, ygroup=:method, 
+p = Gadfly.plot(randomRep_compare, x=:description, y=:rₛ , color=:dataset, xgroup=:param, ygroup=:method, 
             Geom.subplot_grid(Geom.boxplot()),
-            Guide.title("Random Pairings Gray - R=$r"))
-display(p)
+            Guide.title("Random Pairings All dataset"))
+#display(p)
+draw(PDF("$figure_prefix"*"random_pairings.pdf", 10inch, 6inch), p)
+
+### Plot pairing correlation by param x dataset x method x description
+dataset = ["gray", "gCSI", "ctrpv2"]
+bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
+metrics_bounds = Dict(:HDR=>[-50,150], :LDR=>[70,150], :ic50=>[-10,10], :slope=>[0,10], :aac=>[0,100])
+scaleColor = Scale.lab_gradient("gray95","black")
+i = 1
+
+    dt = dataset[2]
+    println("### $dt")
+
+    println("Get data")
+    data_df = getRawData_h5(dt, false)
+    sd_df = combine(groupby(data_df, :exp_id), :Viability => std => :std_viability)
+    expId_complete = sd_df[sd_df.std_viability .>= 20, :exp_id]
+    expId_incomplete = sd_df[sd_df.std_viability .< 20, :exp_id]
+
+    println("Get pairings")
+    pairings_df = getPairings_h5(dt)
+    pairingComplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_complete && y ∈ expId_complete, pairings_df)
+    pairingIncomplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete && y ∈ expId_incomplete, pairings_df)
+    pairingMixte_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete || y ∈ expId_incomplete, pairings_df)
+
+    mlPaired_df = getMLestimates([dt], pairings_df)
+    pairingConverge_df = filter([:convergence_rep1, :convergence_rep2] => (a, b) -> a + b == 2, mlPaired_df)
+
+    pairs_desc = [pairings_df, pairingComplete_df, pairingIncomplete_df, pairingMixte_df, pairingConverge_df]
+    pairs_names = ["all pairs", "complete pairs", "incomplete pairs", "mixte pairs", "converged pairs"]
+    N = [nrow(df) for df in pairs_desc]
+    
+    println("Get posterior pairings")
+    all_type_rep = DataFrame()
+    for j in 1:length(N)
+        tmp1 = getPosterior_h5(dt, false, Array(pairs_desc[j].rep_1))
+        rename!(tmp1, map(x -> "$x"*"_rep1", names(tmp1)))
+        tmp2 = getPosterior_h5(dt, false, Array(pairs_desc[j].rep_2))
+        rename!(tmp2, map(x -> "$x"*"_rep2", names(tmp2)))
+
+        tmp = hcat(tmp1, tmp2)
+        tmp[!, :description] = repeat([pairs_names[j]], nrow(tmp))
+
+        all_type_rep = vcat(all_type_rep, tmp)
+    end
+
+    println("Plot posterior pairs by metrics")
+    Gadfly.set_default_plot_size(10inch, 4inch)
+    for pr in bidra_params
+        p = Gadfly.plot(all_type_rep, x=Symbol(string(pr)*"_rep1"), y=Symbol(string(pr)*"_rep2"),
+                        xgroup=:description, 
+                        Geom.subplot_grid(Geom.hexbin()),
+                        Scale.color_continuous(colormap=scaleColor, minvalue=1),
+                        Guide.title(string("$dt $pr pairing posterior (N =", N, ")")));
+        #display(p)
+        draw(PDF("$figure_prefix"*"$dt"*"_"*string(pr)*"_posterior.pdf", 10inch, 4inch), p)
+    end

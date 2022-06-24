@@ -144,7 +144,7 @@ function getMLestimates(dt::Array, pairing_df::DataFrame)
     return mle_data
 end
 
-function correlationAnalysis(X, Y)
+function correlationAnalysis(X::Array, Y::Array)
     ### Linear Regression
     data = DataFrame(x=X, y=Y)
     data[!, :x] = convert.(Float64, data[:, :x])
