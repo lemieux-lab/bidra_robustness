@@ -32,8 +32,6 @@ for i in 1:length(datasets)
 
     @time ml_df = getMLestimates([dt])
     tmp = get_converged(ml_df)
-
-    @time posterior_df = getPosterior_h5(dt, false)
     
     ###### Median vs. ML estimations ##########
     println("2. Comparing LM estimate to posterior median")
