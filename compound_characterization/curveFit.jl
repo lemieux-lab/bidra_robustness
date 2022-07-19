@@ -23,12 +23,12 @@ for dt in ["gCSI", "gray", "ctrpv2"]
         fit = curve_fit(model, xdata, ydata, p₀)
 
         bestFitParam = fit.param
-        rmsd = sqrt(sum(fit.resid .^ 2) / length(fit.resid))
+        rmse = sqrt(sum(fit.resid .^ 2) / length(fit.resid))
         convergence = fit.converged
         aac = computeAAC(xdata, ydata, bestFitParam)
 
         tmp_df = DataFrame(LDR=bestFitParam[1], HDR=bestFitParam[2], ic50=bestFitParam[3],
-                        slope=bestFitParam[4], aac=aac, exp_id=e, dataset=dt, rmsd=rmsd, convergence=convergence)
+                        slope=bestFitParam[4], aac=aac, exp_id=e, dataset=dt, rmse=rmse, convergence=convergence)
 
         CSV.write(juliaMLe_fn, tmp_df, delim=",", append=true)
     end
