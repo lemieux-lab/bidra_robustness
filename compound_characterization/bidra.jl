@@ -13,9 +13,8 @@ dataset = ARGS[3]
 
 
 ### Global variables
-data_prefix = "/home/golem/scratch/labellec/_DATA/"
-result_prefix = "/home/golem/scratch/labellec/_RESULTS/"*dataset*"_julia_process_all/"
-figure_prefix = "/home/golem/scratch/labellec/_RESULTS/"*dataset*"_julia_process_all/FIGURES/"
+result_prefix = "../data/$dataset"*"_julia_process_all/"
+figure_prefix = "../data/$dataset"*"_julia_process_all/FIGURES/"
 diagnostic_fn = "../_generated_data/"*dataset*"_diagnostics.csv"
 diagnosticTMP_fn = "../_generated_data/TMP_diagnostics"*string(batch)*".csv"
 batchTiming_fn = "../_generated_data/batch_timing.csv"
@@ -27,8 +26,8 @@ nAdapt = 1000
 δ = 0.65
 #Turing.setadbackend(:reversediff)
 
-data_df = getRawData([dataset], data_prefix, true)
-expId = unique(data_df.exp_id)
+data_df = getRawData_h5(dataset, false)
+expId = getExpId_h5(dataset)
 
 ### Create batches and select one
 sort!(expId)
