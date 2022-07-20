@@ -3,8 +3,7 @@ using DataFrames, HDF5
 include("../utils.jl")
 
 datasets = ["gCSI", "ctrpv2", "gray"]
-info_prefix = "/home/golem/scratch/labellec/_DATA/curves_info/"
-data_prefix = "/home/golem/scratch/labellec/_DATA/"
+info_prefix = "../data/curves_info/"
 output_prefix = "./"
 
 ### Dataset-specific
