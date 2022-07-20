@@ -3,7 +3,7 @@ using Statistics, StatsBase
 using ProgressBars
 
 include("../utils.jl")
-fn = "_generated_data/viabCorrelations.csv"
+fn = checkFile("_generated_data/viabCorrelations.csv")
 
 ### Define dataset to analyze
 dt = ARGS[1]
@@ -36,29 +36,34 @@ println("---> all")
 ## Considering all pairings
 doCorrelation(pair_shared_dose, [:Viability, :Viability_1], dt, "all possible pairing")
 
-println("---> mean")
 ## Mean response
 tmp = combine(groupby(pair_shared_dose, [:rep_1, :Concentration]), :Viability => mean => :mean_1, :Viability_1 => mean => :mean_2)
-doCorrelation(tmp, [:mean_1, :mean_2], dt, "mean per dose")
 
-println("---> bootstrap")
-## Boostrap
-N = length(unique(tmp.rep_1))
-n = nrow(tmp)
-R = 10000
-rep_corr_df = DataFrame()
+if nrow(tmp) != nrow(pair_shared_dose)
+    println("---> mean")
+    doCorrelation(tmp, [:mean_1, :mean_2], dt, "mean per dose")
 
-for r in ProgressBar(1:R)
-    tmp = mapreduce(g -> DataFrame(g[rand(1:nrow(g)), :]), vcat, groupby(pair_shared_dose, [:rep_1, :Concentration]))
-    corr_df = correlationAnalysis(tmp[:,:Viability], tmp[:,:Viability_1])
-    append!(rep_corr_df, corr_df)
+    println("---> bootstrap")
+    ## Boostrap
+    N = length(unique(tmp.rep_1))
+    n = nrow(tmp)
+    R = 10000
+    rep_corr_df = DataFrame()
+
+    for r in ProgressBar(1:R)
+        tmp = mapreduce(g -> DataFrame(g[rand(1:nrow(g)), :]), vcat, groupby(pair_shared_dose, [:rep_1, :Concentration]))
+        corr_df = correlationAnalysis(tmp[:,:Viability], tmp[:,:Viability_1])
+        append!(rep_corr_df, corr_df)
+    end
+
+    function saveRepStats(df::DataFrame, s::Symbol)
+        tmp = DataFrame(slope=[], intercept=[] ,r²=[], rₛ=[], r=[], N=[], dataset=[], description=[])
+        push!(tmp, vcat(df[!, s], [N, n, dt, "$R rep $s"]))
+        CSV.write(fn, tmp, delim=",", append=true)
+    end
+
+    stats_rep = describe(rep_corr_df, :mean, :median, std => :std)
+    saveRepStats(stats_rep, :mean)
+else 
+    println("There are no dose-replicate")
 end
-
-function saveRepStats(df::DataFrame, s::Symbol)
-    tmp = DataFrame(slope=[], intercept=[] ,r²=[], rₛ=[], r=[], N=[], dataset=[], description=[])
-    push!(tmp, vcat(df[!, s], [N, n, dt, "$R rep $s"]))
-    CSV.write(fn, tmp, delim=",", append=true)
-end
-
-stats_rep = describe(rep_corr_df, :mean, :median, std => :std)
-saveRepStats(stats_rep, :mean)

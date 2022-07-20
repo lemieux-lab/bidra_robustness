@@ -4,6 +4,16 @@ using Optim, GLM, LsqFit
 using Glob
 
 
+function checkFile(fn::String)
+    if isfile(fn)
+        return fn
+    elseif isfile("../$fn")
+        return "../$fn"
+    else
+        return missing
+    end
+end
+
 function readCSV(fn::String, h::Bool, addExpId::Bool, expId::String) 
     csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
     if addExpId
@@ -20,16 +30,16 @@ function replaceChar(df::DataFrame, col::Symbol)
 end
 
 function getExpId_h5(dt::String)
-    fn_h5 = "data/$dt"*"_complete.h5"
+    fn_h5 = checkFile("data/$dt"*"_complete.h5")
     return h5read(fn_h5, "info")["exp_id"]
 end
 
 function getRawData_h5(dt::String, localVar::Bool)
     ### Define path
     if localVar
-        fn_h5 = "data/local_$dt"*"_complete.h5"
+        fn_h5 = checkFile("data/local_$dt"*"_complete.h5")
     else
-        fn_h5 = "data/$dt"*"_complete.h5"
+        fn_h5 = checkFile("data/$dt"*"_complete.h5")
     end
 
     ### Get list of expID
@@ -105,7 +115,8 @@ function llogistic(param::Array)
 end
 
 function getPairings_h5(dt::String)
-    df = DataFrame(h5read("correlation_metrics/rep2_pairing.h5", dt))
+    fn = checkFile("correlation_metrics/rep2_pairing.h5")
+    df = DataFrame(h5read(fn, dt))
     return df
 end
 
