@@ -14,3 +14,7 @@ untracked_misc/
 data/
 _generated_data/
 _generated_figures/
+
+## Data
+correlation_metrics/*_pairing.csv
+correlation_metrics/rep2_pairing.h5
