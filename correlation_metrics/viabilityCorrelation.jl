@@ -10,16 +10,12 @@ dt = ARGS[1]
 #dt = "gray"
 
 ### Get data
+println("1. Get data")
 pairings_df = getPairings_h5(dt)
 pairings_df.pairID = collect(1:nrow(pairings_df))
 viability_df = getRawData_h5(dt, false)
 
-exp1, exp2 = pairings_df[2, :]
-viability1 = filter(:exp_id => x -> x == exp1, viability_df)
-viability2 = filter(:exp_id => x -> x == exp2, viability_df)
-
-shared_dose = innerjoin(viability1, viability2, on=:Concentration, makeunique=true)
-
+println("2. Pair experiments responses")
 rep1 = innerjoin(pairings_df[:, [:rep_1, :pairID]], viability_df, on=:rep_1=>:exp_id)
 rep2 = innerjoin(pairings_df[:, [:rep_2, :pairID]], viability_df, on=:rep_2=>:exp_id)
 pair_shared_dose = innerjoin(rep1, rep2, on=[:pairID, :Concentration], makeunique=true)
@@ -35,13 +31,18 @@ function doCorrelation(df::DataFrame, colNames::Array,  dt::String, description:
     CSV.write(fn, corr_df, delim=",", append=true)
 end
 
+println("3. Do correlation analysis")
+println("---> all")
 ## Considering all pairings
 doCorrelation(pair_shared_dose, [:Viability, :Viability_1], dt, "all possible pairing")
 
+println("---> mean")
 ## Mean response
 tmp = combine(groupby(pair_shared_dose, [:rep_1, :Concentration]), :Viability => mean => :mean_1, :Viability_1 => mean => :mean_2)
 doCorrelation(tmp, [:mean_1, :mean_2], dt, "mean per dose")
 
+println("---> bootstrap")
+## Boostrap
 N = length(unique(tmp.rep_1))
 n = nrow(tmp)
 R = 10000
