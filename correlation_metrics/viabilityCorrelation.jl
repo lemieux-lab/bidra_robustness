@@ -47,7 +47,7 @@ if nrow(tmp) != nrow(pair_shared_dose)
     ## Boostrap
     N = length(unique(tmp.rep_1))
     n = nrow(tmp)
-    R = 10000
+    R = 100
     rep_corr_df = DataFrame()
 
     for r in ProgressBar(1:R)
@@ -57,13 +57,15 @@ if nrow(tmp) != nrow(pair_shared_dose)
     end
 
     function saveRepStats(df::DataFrame, s::Symbol)
-        tmp = DataFrame(slope=[], intercept=[] ,r²=[], rₛ=[], r=[], N=[], dataset=[], description=[])
+        tmp = DataFrame(slope=[], intercept=[] ,r²=[], rₛ=[], r=[], N=[], n=[], dataset=[], description=[])
         push!(tmp, vcat(df[!, s], [N, n, dt, "$R rep $s"]))
         CSV.write(fn, tmp, delim=",", append=true)
     end
 
     stats_rep = describe(rep_corr_df, :mean, :median, std => :std)
     saveRepStats(stats_rep, :mean)
+    saveRepStats(stats_rep, :median)
+    saveRepStats(stats_rep, :std)
 else 
     println("There are no dose-replicate")
 end
