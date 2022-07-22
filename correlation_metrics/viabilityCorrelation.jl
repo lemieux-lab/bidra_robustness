@@ -37,16 +37,16 @@ println("---> all")
 doCorrelation(pair_shared_dose, [:Viability, :Viability_1], dt, "all possible pairing")
 
 ## Mean response
-tmp = combine(groupby(pair_shared_dose, [:rep_1, :Concentration]), :Viability => mean => :mean_1, :Viability_1 => mean => :mean_2)
+tmp_mean = combine(groupby(pair_shared_dose, [:rep_1, :Concentration]), :Viability => mean => :mean_1, :Viability_1 => mean => :mean_2)
 
-if nrow(tmp) != nrow(pair_shared_dose)
+if nrow(tmp_mean) != nrow(pair_shared_dose)
     println("---> mean")
     doCorrelation(tmp, [:mean_1, :mean_2], dt, "mean per dose")
 
     println("---> bootstrap")
     ## Boostrap
-    N = length(unique(tmp.rep_1))
-    n = nrow(tmp)
+    N = length(unique(tmp_mean.rep_1))
+    n = nrow(tmp_mean)
     R = 10000
     rep_corr_df = DataFrame()
 
