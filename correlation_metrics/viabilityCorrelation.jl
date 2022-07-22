@@ -47,7 +47,7 @@ if nrow(tmp) != nrow(pair_shared_dose)
     ## Boostrap
     N = length(unique(tmp.rep_1))
     n = nrow(tmp)
-    R = 100
+    R = 10000
     rep_corr_df = DataFrame()
 
     for r in ProgressBar(1:R)
