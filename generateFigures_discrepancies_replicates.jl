@@ -40,12 +40,19 @@ median_correlation = addMethods(median_correlation, "Median")
 qq_correlation = addMethods(qq_correlation, "QQ")
 all_correlation = vcat(ml_correlation, median_correlation, qq_correlation)
 
+### Plot all pairing results
 Gadfly.set_default_plot_size(6inch, 4inch)
 all_correlation_pairs = filter([:description, :param] => (x, y) -> x ∈ ["all pairs", "converged pairs"] && y != "aac", all_correlation)
 p = Gadfly.plot(all_correlation_pairs, x=:method, y=:rₛ, color=:description, xgroup=:param, ygroup=:dataset, 
             Geom.subplot_grid(Geom.bar(position=:dodge)),
             Guide.title("All Pairs correlations"))
 draw(PDF("$figure_prefix"*"all_dt_correlations.pdf", 6inch, 4inch), p)
+
+### Plot correlation by "completeness"
+corr_subset = filter(:description => x -> x != "mixte pairs", all_correlation)
+Gadfly.set_default_plot_size(8inch, 6inch)
+p = Gadfly.plot(corr_subset, x=:description, y=:rₛ, color=:dataset, ygroup=:method, xgroup=:param, Geom.subplot_grid(Geom.point))
+draw(PDF("$figure_prefix"*"all_dt_correlations_grouped.pdf", 8inch, 6inch), p)
 
 ### Correlations of random pairings
 bidra_randomRep = readCSV("_generated_data/bidraRandomCorrelation.csv", true, false, "")
