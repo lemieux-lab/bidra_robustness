@@ -31,10 +31,13 @@ for i in 1:length(datasets)
     @time data_df = getRawData_h5(dt, false, si);
 
     println("--> ML estimates")
-    @time ml_df = getMLestimates([dt]);
+    @time ml_df = getMLestimates(dt, si);
     tmp = get_converged(ml_df);
 
-    @time posterior_df = getPosterior_h5(dt, false);
+    println("--> Posterior distributions")
+    @time posterior_df = getPosterior_h5(dt, false, si);
+
+    println("--> Add median and metrics")
     metrics_df = get_median(posterior_df, eff_metrics, ml_df);
 
     ###### IC50 vs. experimental concentration ##########
@@ -45,26 +48,20 @@ for i in 1:length(datasets)
     ### compare ic50 estimation to std
     println("---> Plotting IC50 est. vs. std")
     subset_df = metricZoom_subset(metrics_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2]);
+
     println("------> Size of subset: ", size(subset_df))
     p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds);
-
     if dt == "gCSI"
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, subset_df)
+        exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, subset_df)
         push!(p, layer(exp_subset_df, x=:ic50, y=:viability_std, Geom.point(), order=1))
     end
     draw(PDF(figure_prefix*dt*"_std_mle_ic50.pdf", 3inch, 2inch), p);
 
     println("---> Plotting IC50 posterior vs. std")
-    if dt == "ctrpv2" ### Out of Memory error when trying to plot complete posterior
-        tmp = mapreduce(g -> DataFrame(g[sample(1:nrow(g), 2000, replace=false), :]), vcat, groupby(posterior_df, [:exp_id]));
-        subset_df = metricZoom_subset(tmp, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2]);
-    else 
-        subset_df = metricZoom_subset(posterior_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2]);
-    end
-    
+    subset_df = metricZoom_subset(posterior_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2]);
     p = ic50_std_plot(posterior_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds);
     if dt == "gCSI"
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, subset_df)
+        exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, subset_df)
         tmp_interval = combine(groupby(exp_subset_df, :exp_id), :ic50 => (x -> percentile(x, [2.5, 97.5])) => :interval)
         tmp_std = combine(groupby(exp_subset_df, :exp_id), :viability_std => unique => :viability_std)
         tmp = innerjoin(tmp_interval, tmp_std, on=:exp_id)
@@ -84,7 +81,7 @@ for i in 1:length(datasets)
                     Theme(panel_stroke="black"));
 
     if dt == "gCSI"
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, withinDose_prob)
+        exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, withinDose_prob)
         push!(p, layer(exp_subset_df, x=:outsideProb, y=:viability_std, Geom.point()))
     end
     draw(PDF(figure_prefix*dt*"_std_prob_ic50.pdf", 5inch, 2inch), p)
@@ -105,7 +102,7 @@ for i in 1:length(datasets)
     p = ml_post_diff_plot(em_subset_df, em, metrics_bounds[em][1], metrics_bounds[em][2])
 
     if dt == "gCSI"
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, metrics_df)
+        exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, metrics_df)
         push!(p, layer(exp_subset_df, x=em, y=Symbol(String(em)*"_postDiff"), Geom.point(), order=1))
     end
     draw(PDF(figure_prefix*dt*"_postDiff_ml_"*string(em)*".pdf", 3inch, 2inch), p)
@@ -120,7 +117,7 @@ for i in 1:length(datasets)
                     Theme(panel_stroke="black"));
 
     if dt == "gCSI"
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, em_subset_df)
+        exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, em_subset_df)
         push!(p, layer(exp_subset_df, x=:HDR, y=:viability_std, Geom.point()))
     end
     draw(PDF(figure_prefix*dt*"_std_ml_HDR.pdf", 3inch, 2inch), p)
@@ -136,7 +133,7 @@ for i in 1:length(datasets)
                     Theme(panel_stroke="black"));
 
     if dt == "gCSI"
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, em_subset_df)
+        exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, em_subset_df)
         push!(p, layer(exp_subset_df, x=Symbol(string(em)*"_postDiff"), y=:viability_std, Geom.point()))
     end
     draw(PDF(figure_prefix*dt*"_std_posterior_HDR.pdf", 3inch, 2inch), p)

@@ -88,10 +88,14 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
     end
 
     ### Import all posterior
+    expId_list = getExpId_h5(dt)
     file = h5open(fn_h5, "r")
 
     ## Alocate memory for each column
     chains_colName = read(file, "info")["chains_colNames"]
+    expSize = map(e -> size(file[e*"/chains"])[1], expId_list)
+    size_tot = sum(expSize)
+
     chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
     id_list = Array{Float32, 1}(undef, size_tot)
     pos = 1
@@ -100,7 +104,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
         n = expSize[findfirst(x -> x == e, expId_list)]
         tmp = read(file, e)["chains"]
 
-        chains_mtx[pos:n-1,1:length(chains_colName)]=tmp
+        chains_mtx[pos:pos+n-1,1:length(chains_colName)]=tmp
         id_list[pos:pos+n-1] = repeat([si.str2id[e]], n)
         
         pos += n
@@ -126,6 +130,9 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::A
 
     ## Alocate memory for each column
     chains_colName = read(file, "info")["chains_colNames"]
+    expSize = map(e -> size(file[e*"/chains"])[1], expId_list)
+    size_tot = sum(expSize)
+
     chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
     id_list = Array{Float32, 1}(undef, size_tot)
     pos = 1
