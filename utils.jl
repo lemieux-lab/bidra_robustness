@@ -17,11 +17,14 @@ function checkFile(fn::String)
     end
 end
 
-function readCSV(fn::String, h::Bool, addExpId::Bool, expId::String) 
+function readCSV(fn::String, h::Bool) 
     csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
-    if addExpId
-        csv_file[!,"exp_id"] = repeat([expId], nrow(csv_file))
-    end
+    return csv_file 
+end
+
+function readCSV(fn::String, h::Bool, expId::String, si::StrIndex) 
+    csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
+    csv_file[!,"exp_id"] = repeat([si.str2id[expId]], nrow(csv_file))
     return csv_file 
 end
 
@@ -37,7 +40,7 @@ function getExpId_h5(dt::String)
     return h5read(fn_h5, "info")["exp_id"]
 end
 
-function getRawData_h5(dt::String, localVar::Bool)
+function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
     ### Define path
     if localVar
         fn_h5 = checkFile("data/local_$dt"*"_complete.h5")
@@ -47,11 +50,10 @@ function getRawData_h5(dt::String, localVar::Bool)
 
     ### Get list of expID
     expId_list = getExpId_h5(dt)
-    si = Utils.StrIndex(expId_list)
 
     ### Import responses and concentration
     file = h5open(fn_h5, "r")
-    @time expSize = map(e -> size(file[e*"/data"])[1], expId_list)
+    expSize = map(e -> size(file[e*"/data"])[1], expId_list)
     size_tot = sum(expSize)
     
     ## Alocate memory for each column
@@ -77,7 +79,7 @@ function getRawData_h5(dt::String, localVar::Bool)
     return data_df
 end
 
-function getPosterior_h5(dt::String, localVar::Bool)
+function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
     ### Define path
     if localVar 
         fn_h5 = "data/local_$dt"*"_complete.h5"
@@ -85,25 +87,33 @@ function getPosterior_h5(dt::String, localVar::Bool)
         fn_h5 = "data/$dt"*"_complete.h5"
     end
 
-    ### Get list of expID
-    expId_list = getExpId_h5(dt)
-
-    ### Import and merge all posterior
+    ### Import all posterior
     file = h5open(fn_h5, "r")
-    chains = map(e -> read(file, e)["chains"], expId_list)
+
+    ## Alocate memory for each column
     chains_colName = read(file, "info")["chains_colNames"]
+    chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
+    id_list = Array{Float32, 1}(undef, size_tot)
+    pos = 1
+
+    for e in ProgressBar(expId_list)
+        n = expSize[findfirst(x -> x == e, expId_list)]
+        tmp = read(file, e)["chains"]
+
+        chains_mtx[pos:n-1,1:length(chains_colName)]=tmp
+        id_list[pos:pos+n-1] = repeat([si.str2id[e]], n)
+        
+        pos += n
+    end
     close(file)
 
-    chains_mtx = vcat(chains...)
     chains_df = DataFrame(chains_mtx, :auto)
     rename!(chains_df, chains_colName)
-
-    ### Get experiments listing
-    chains_df[!, :exp_id] = repeat(expId_list, inner=4000)
+    chains_df[!, :exp_id] = id_list
     return chains_df
 end
 
-function getPosterior_h5(dt::String, localVar::Bool, expId_list::Array)
+function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::Array)
     ### Define path
     if localVar 
         fn_h5 = "data/local_$dt"*"_complete.h5"
@@ -111,18 +121,29 @@ function getPosterior_h5(dt::String, localVar::Bool, expId_list::Array)
         fn_h5 = "data/$dt"*"_complete.h5"
     end
 
-    ### Import and merge all posterior
+    ### Import all posterior
     file = h5open(fn_h5, "r")
-    chains = map(e -> read(file, e)["chains"], expId_list)
+
+    ## Alocate memory for each column
     chains_colName = read(file, "info")["chains_colNames"]
+    chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
+    id_list = Array{Float32, 1}(undef, size_tot)
+    pos = 1
+
+    for e in ProgressBar(expId_list)
+        n = expSize[findfirst(x -> x == e, expId_list)]
+        tmp = read(file, e)["chains"]
+
+        chains_mtx[pos:n-1,1:length(chains_colName)]=tmp
+        id_list[pos:pos+n-1] = repeat([si.str2id[e]], n)
+        
+        pos += n
+    end
     close(file)
 
-    chains_mtx = vcat(chains...)
     chains_df = DataFrame(chains_mtx, :auto)
     rename!(chains_df, chains_colName)
-
-    ### Get experiments listing
-    chains_df[!, :exp_id] = repeat(expId_list, inner=4000)
+    chains_df[!, :exp_id] = id_list
     return chains_df
 end
 
@@ -131,9 +152,12 @@ function llogistic(param::Array)
     return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
 end
 
-function getPairings_h5(dt::String)
+function getPairings_h5(dt::String, si::StrIndex)
     fn = checkFile("correlation_metrics/rep2_pairing.h5")
     df = DataFrame(h5read(fn, dt))
+
+    df[!,:rep_1] = [si.str2id[v] for v in df[!,:rep_1]]
+    df[!,:rep_] = [si.str2id[v] for v in df[!,:rep_2]]
     return df
 end
 
@@ -149,15 +173,18 @@ function getPairedPosterior_h5(dt::String)
     return hcat(posterior_rep1, posterior_rep2)
 end
 
-function getMLestimates(dt::Array,)
+function getMLestimates(dt::String, si::StrIndex)
     mle_prefix = "data/all_julia_curveFit.csv"
-    mle_data = readCSV(mle_prefix, true, false, "")
-    mle_data = filter(:dataset => x -> x ∈ dt, mle_data)
-    return mle_data
+    mle_data = readCSV(mle_prefix, true)
+
+    ## Only select estimate for datasets
+    mle_data_dt = filter(:dataset => x -> x == dt, mle_data)
+    mle_data_dt[!, :exp_id] = [si.str2id[v] for v in mle_data_dt.exp_id]
+    return mle_data_dt
 end
 
-function getMLestimates(dt::Array, pairing_df::DataFrame)
-    mle_data = getMLestimates(dt)
+function getMLestimates(dt::String, si::StrIndex, pairing_df::DataFrame)
+    mle_data = getMLestimates(dt,st)
     
     mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
     mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset, :convergence]]
@@ -165,11 +192,11 @@ function getMLestimates(dt::Array, pairing_df::DataFrame)
     mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep1"))
     mle_tmp = innerjoin(mle_tmp, mle_data, on=:rep_2 => :exp_id, renamecols=("" => "_rep2"))
     
-    mle_data = filter(row -> !isnan(row.LDR_rep1) && !isnan(row.LDR_rep2), mle_tmp)
-    mle_data[!, :aac_rep_1] = replace(mle_data.aac_rep1, Inf => NaN, -Inf => NaN)
-    mle_data[!, :aac_rep_2] = replace(mle_data.aac_rep2, Inf => NaN, -Inf => NaN)
+    mle_data_paired = filter(row -> !isnan(row.LDR_rep1) && !isnan(row.LDR_rep2), mle_tmp)
+    mle_data_paired[!, :aac_rep_1] = replace(mle_data.aac_rep1, Inf => NaN, -Inf => NaN)
+    mle_data_paired[!, :aac_rep_2] = replace(mle_data.aac_rep2, Inf => NaN, -Inf => NaN)
     
-    return mle_data
+    return mle_data_paired
 end
 
 function correlationAnalysis(X::Array, Y::Array)

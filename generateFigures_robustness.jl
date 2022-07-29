@@ -21,9 +21,16 @@ for i in 1:length(datasets)
     dt = datasets[i];
     println("**********************", dt, "**********************")
     println("1. Get data and metrics")
-    @time data_df = getRawData_h5(dt, false);
+    print("--> List of expId ")
     @time expId_list = getExpId_h5(dt);
 
+    print("--> StrIndex ")
+    @time si = Utils.StrIndex(expId_list);
+
+    println("--> Raw data ")
+    @time data_df = getRawData_h5(dt, false, si);
+
+    println("--> ML estimates")
     @time ml_df = getMLestimates([dt]);
     tmp = get_converged(ml_df);
 
