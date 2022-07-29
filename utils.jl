@@ -3,6 +3,7 @@ using DataFrames, HDF5
 using CSV
 using Optim, GLM, LsqFit
 using Glob
+using ProgressBars
 using Utils ### from lemieux-lab
 
 
@@ -46,23 +47,33 @@ function getRawData_h5(dt::String, localVar::Bool)
 
     ### Get list of expID
     expId_list = getExpId_h5(dt)
-    si = str2id(expId_list)
+    si = Utils.StrIndex(expId_list)
 
-    ### Import and merge all responses and concentration
+    ### Import responses and concentration
     file = h5open(fn_h5, "r")
     @time expSize = map(e -> size(file[e*"/data"])[1], expId_list)
+    size_tot = sum(expSize)
     
+    ## Alocate memory for each column
+    concentration_list = Array{Float32, 1}(undef, size_tot)
+    viability_list = Array{Float32, 1}(undef, size_tot)
+    id_list = Array{Float32, 1}(undef, size_tot)
+    pos = 1
 
-    data = map(e -> read(file, e)["data"], expId_list)
-    occ_expId = map(e -> repeat([e], size(read(file, e)["data"])[1]), expId_list)
-    data_colName = read(file, "info")["data_colNames"]
+    for e in ProgressBar(expId_list)
+        n = expSize[findfirst(x -> x == e, expId_list)]
+        tmp = read(file, e)["data"]
+
+        concentration_list[pos:pos+n-1] = tmp[1:n]
+        viability_list[pos:pos+n-1] = tmp[n+1:end]
+        id_list[pos:pos+n-1] = repeat([si.str2id[e]], n)
+        
+        pos += n
+    end
     close(file)
 
     ### Build dataframe
-    data_mtx = vcat(data...)
-    data_df = DataFrame(data_mtx, :auto)
-    rename!(data_df, data_colName)
-    data_df[!, :exp_id] = vcat(occ_expId...)
+    data_df = DataFrame(Concentration=concentration_list, Viability=viability_list, exp_id=id_list)
     return data_df
 end
 
