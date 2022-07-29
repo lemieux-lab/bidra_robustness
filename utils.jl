@@ -14,6 +14,8 @@ function checkFile(fn::String)
     end
 end
 
+z
+
 function readCSV(fn::String, h::Bool, addExpId::Bool, expId::String) 
     csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
     if addExpId
