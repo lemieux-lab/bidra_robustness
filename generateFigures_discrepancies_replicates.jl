@@ -1,10 +1,9 @@
+push!(LOAD_PATH, "Utils/")
 using DataFrames
 using Distributions, Statistics, StatsBase
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
-
-include("utils.jl")
-include("plot_utils.jl")
+using Utils
 
 ### Global Var
 figure_prefix = "_generated_figures/discrepancies_replicates/"

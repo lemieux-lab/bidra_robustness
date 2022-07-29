@@ -1,7 +1,9 @@
+push!(LOAD_PATH, "Utils/")
 using DataFrames, HDF5
 using CSV
 using Optim, GLM, LsqFit
 using Glob
+using Utils ### from lemieux-lab
 
 
 function checkFile(fn::String)
@@ -13,8 +15,6 @@ function checkFile(fn::String)
         return missing
     end
 end
-
-z
 
 function readCSV(fn::String, h::Bool, addExpId::Bool, expId::String) 
     csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
@@ -46,7 +46,7 @@ function getRawData_h5(dt::String, localVar::Bool)
 
     ### Get list of expID
     expId_list = getExpId_h5(dt)
-    ## create StrIndex
+    si = str2id(expId_list)
 
     ### Import and merge all responses and concentration
     file = h5open(fn_h5, "r")

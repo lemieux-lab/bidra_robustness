@@ -1,3 +1,4 @@
+module Utils
 export StrIndex, getindex, length
 using HDF5, DataFrames
 
@@ -32,3 +33,5 @@ function DataFrames.DataFrame(g::HDF5.Group)
     convert(p) = (p.first, p.second[:]) # To pull data from the HDF5 dataset
     return DataFrame(Dict(map(convert, pairs(g))))
 end
+
+end # module
