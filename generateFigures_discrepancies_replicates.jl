@@ -49,10 +49,13 @@ p = Gadfly.plot(all_correlation_pairs, x=:method, y=:rₛ, color=:description, x
 draw(PDF("$figure_prefix"*"all_dt_correlations.pdf", 6inch, 4inch), p)
 
 ### Plot correlation by "completeness"
-corr_subset = filter(:description => x -> x != "mixte pairs", all_correlation)
-Gadfly.set_default_plot_size(8inch, 6inch)
-p = Gadfly.plot(corr_subset, x=:description, y=:rₛ, color=:dataset, ygroup=:method, xgroup=:param, Geom.subplot_grid(Geom.point))
-draw(PDF("$figure_prefix"*"all_dt_correlations_grouped.pdf", 8inch, 6inch), p)
+corr_subset = filter(:description => x -> x ∉ ["mixte pairs", "converged pairs"], all_correlation)
+dt = "gCSI"
+corr_subset_dt = filter(:dataset => x -> x == dt, corr_subset)
+
+Gadfly.set_default_plot_size(10inch, 8inch)
+p = Gadfly.plot(corr_subset, x=:description, y=:rₛ, color=:method, ygroup=:param, xgroup=:dataset, Geom.subplot_grid(Geom.bar(position=:dodge)))
+draw(PDF("$figure_prefix"*"all_dt_correlations_grouped.pdf", 10inch, 8inch), p)
 
 ### Correlations of random pairings
 bidra_randomRep = readCSV("_generated_data/bidraRandomCorrelation.csv", true, false, "")

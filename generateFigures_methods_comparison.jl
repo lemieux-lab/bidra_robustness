@@ -8,7 +8,7 @@ include("plot_utils.jl")
 
 ###### Global Var ####
 figure_prefix = "_generated_figures/methods_comparison/"
-datasets = ["ctrpv2"]#["gray", "gCSI", "ctrpv2"]  
+datasets = ["gray", "gCSI", "ctrpv2"]  
 eff_metrics = [:HDR, :LDR, :ic50, :slope, :aac]
 metrics_bounds = Dict(:HDR=>[-50,150], :LDR=>[70,150], :ic50=>[-10,10], :slope=>[0,10], :aac=>[0,100])
 expIdSubset_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b", "HCC78_Lapatinib_11a"]
@@ -35,6 +35,7 @@ for i in 1:length(datasets)
     
     ###### Median vs. ML estimations ##########
     println("2. Comparing LM estimate to posterior median")
+    posterior_df = getPosterior_h5(dt, false)
     metrics_df = get_median(posterior_df, eff_metrics, ml_df)
 
     for em in eff_metrics
@@ -55,105 +56,5 @@ for i in 1:length(datasets)
         em_mtx = kde((em_subset_df[:, Symbol(String(em)*"_median")], em_subset_df[:, em]))
         p = medianML_contour_plot(em_mtx, metrics_bounds[em][1], metrics_bounds[em][2], em_prior)
         draw(PDF(figure_prefix*dt*"_med_mle_"*string(em)*"_contour.pdf", 3inch, 2inch), p)
-    end
-
-
-    ###### IC50 vs. experimental concentration ##########
-    println("3. Looking @ IC50 and experimental dose range")
-    concentrationBounds, metrics_df = get_data_metrics(data_df, metrics_df)
-    posterior_df = innerjoin(posterior_df, metrics_df[:,[:exp_id, :viability_std]], on=:exp_id)
-
-    ### compare ic50 estimation to std
-    println("---> Plotting IC50 est. vs. std")
-    subset_df = metricZoom_subset(metrics_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2])
-    println("------> Size of subset: ", size(subset_df))
-    p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
-
-    if dt == datasets[1]
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, subset_df)
-        push!(p, layer(exp_subset_df, x=:ic50, y=:viability_std, Geom.point(), order=1))
-    end
-
-    draw(PDF(figure_prefix*dt*"_std_mle_ic50.pdf", 3inch, 2inch), p)
-
-    println("---> Plotting IC50 est. vs. std contour")
-    mtx = kde((subset_df.ic50, subset_df.viability_std))
-    p = ic50_std_contour_plot(mtx, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
-    draw(PDF(figure_prefix*dt*"_std_mle_ic50_contour.pdf", 3inch, 2inch), p)
-
-    println("---> Plotting IC50 posterior vs. std")
-    subset_df = metricZoom_subset(posterior_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2])
-    p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
-    if dt == datasets[1]
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, subset_df)
-        tmp_interval = combine(groupby(exp_subset_df, :exp_id), :ic50 => (x -> percentile(x, [2.5, 97.5])) => :interval)
-        tmp_std = combine(groupby(exp_subset_df, :exp_id), :viability_std => unique => :viability_std)
-        tmp = innerjoin(tmp_interval, tmp_std, on=:exp_id)
-        push!(p, layer(tmp, x=:interval, y=:viability_std, group=:exp_id, Geom.line(), order=1))
-    end
-    draw(PDF(figure_prefix*dt*"_std_posterior_ic50.pdf", 3inch, 2inch), p)
-
-    println("---> Plotting IC50 posterior vs. std contour")
-    mtx = kde((subset_df.ic50, subset_df.viability_std))
-    p = ic50_std_contour_plot(mtx, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds)
-    draw(PDF(figure_prefix*dt*"_std_posterior_ic50_contour.pdf", 3inch, 2inch), p)
-
-    println("---> Calculating Prob. of IC50 being outside of experimental dose range")
-    withinDose_prob, posterior_df = get_prob_ic50(posterior_df, metrics_df)
-
-    println("---> Plotting prob. vs. std")
-    Gadfly.set_default_plot_size(5inch, 2inch)
-    p = Gadfly.plot(withinDose_prob, x=:outsideProb, y=:viability_std, yintercept=[20],
-                    Geom.hline, Geom.hexbin(xbincount=120, ybincount=90),
-                    Scale.color_continuous(colormap=scaleColor, minvalue=1),
-                    Coord.cartesian(xmin=0, ymin=0, xmax=1),
-                    Theme(panel_stroke="black"))
-
-    if dt == datasets[1]
-        exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, withinDose_prob)
-        push!(p, layer(exp_subset_df, x=:outsideProb, y=:viability_std, Geom.point()))
-    end
-    draw(PDF(figure_prefix*dt*"_std_prob_ic50.pdf", 5inch, 2inch), p)
-
-    println("---> Plotting prob. vs. std contour")
-    mtx = kde((withinDose_prob.outsideProb, withinDose_prob.viability_std))
-    p = Gadfly.plot(z=mtx.density, x=mtx.x, y=mtx.y,
-                    Geom.contour(levels=8),
-                    Scale.color_continuous(colormap=scaleColor, minvalue=0),
-                    Coord.cartesian(xmin=0, ymin=0, xmax=1),
-                    Theme(panel_stroke="black"))
-    draw(PDF(figure_prefix*dt*"_std_prob_ic50_contour.pdf", 5inch, 2inch), p)
-
-
-    println("---> Plotting series of boxplot")
-    pA, pA_conv, pB, pC, pC_conv = boxplots_dose_plot(withinDose_prob)
-    draw(PDF(figure_prefix*dt*"_boxplot_ml_prob_ic50.pdf", 3inch, 3inch), pA)
-    draw(PDF(figure_prefix*dt*"_boxplot_ml_prob_ic50_conv.pdf", 3inch, 3inch), pA_conv)
-    draw(PDF(figure_prefix*dt*"boxplot_conv_prob_ic50.pdf", 3inch, 3inch), pB)
-    draw(PDF(figure_prefix*dt*"boxplot_std_ml_ic50.pdf", 3inch, 3inch), pC)
-    draw(PDF(figure_prefix*dt*"boxplot_std_ml_ic50_conv.pdf", 3inch, 3inch), pC_conv)
-
-
-    ###### Metrics vs. posterior ##########
-    println("4. Looking @ ML est. vs. posterior Δ")
-    metrics_df = get_posterior_diff(posterior_df, metrics_df)
-
-    for em in eff_metrics
-        println("---> ", em)
-        println("------> Plotting hexbin")
-        em_subset_df = metricZoom_subset(metrics_df, em, metrics_bounds[em][1], metrics_bounds[em][2])
-        p = ml_post_diff_plot(em_subset_df, em, metrics_bounds[em][1], metrics_bounds[em][2])
-
-        if dt == "gCSI"
-            exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, metrics_df)
-            push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_postDiff"), y=em, Geom.point(), order=1))
-        end
-
-        draw(PDF(figure_prefix*dt*"_postDiff_ml_"*string(em)*".pdf", 3inch, 2inch), p)
-
-        println("------> Plotting contour")
-        em_mtx = kde((em_subset_df[:, Symbol(String(em)*"_postDiff")], em_subset_df[:, em]))
-        p = ml_post_diff_contour_plot(em_mtx, metrics_bounds[em][1], metrics_bounds[em][2])
-        draw(PDF(figure_prefix*dt*"_postDiff_ml_"*string(em)*"_contour.pdf", 3inch, 2inch), p)
     end
 end

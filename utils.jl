@@ -44,9 +44,13 @@ function getRawData_h5(dt::String, localVar::Bool)
 
     ### Get list of expID
     expId_list = getExpId_h5(dt)
+    ## create StrIndex
 
     ### Import and merge all responses and concentration
     file = h5open(fn_h5, "r")
+    @time expSize = map(e -> size(file[e*"/data"])[1], expId_list)
+    
+
     data = map(e -> read(file, e)["data"], expId_list)
     occ_expId = map(e -> repeat([e], size(read(file, e)["data"])[1]), expId_list)
     data_colName = read(file, "info")["data_colNames"]

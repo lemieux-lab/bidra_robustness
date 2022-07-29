@@ -68,8 +68,8 @@ function ic50_std_plot(df, lb, ub, concentrationBounds)
                  Geom.hline(), Geom.hexbin(xbincount=80, ybincount=80),
                  Scale.color_continuous(colormap=scaleColor, minvalue=1),
                  Coord.cartesian(xmin=lb, xmax=ub, ymin=0),
-                 Theme(panel_stroke= "black"),
-                 Guide.title("N="*string(length(unique(df.exp_id)))))
+                 Theme(panel_stroke= "black"),)
+                 #Guide.title("N="*string(length(unique(df.exp_id)))))
 
     push!(p, layer(xintercept=concentrationBounds, Geom.vline(color=["black"])))
     return p
