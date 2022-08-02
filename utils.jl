@@ -59,7 +59,7 @@ function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
     ## Alocate memory for each column
     concentration_list = Array{Float32, 1}(undef, size_tot)
     viability_list = Array{Float32, 1}(undef, size_tot)
-    id_list = Array{Float32, 1}(undef, size_tot)
+    id_list = Array{Int32, 1}(undef, size_tot)
     pos = 1
 
     for e in ProgressBar(expId_list)
@@ -75,7 +75,7 @@ function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
     close(file)
 
     ### Build dataframe
-    data_df = DataFrame(Concentration=concentration_list, Viability=viability_list, exp_id=id_list)
+    data_df = DataFrame(Concentration=concentration_list, Viability=viability_list, exp_id=id_list, dataset=repeat([dt], length(concentration_list)))
     return data_df
 end
 
@@ -97,7 +97,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
     size_tot = sum(expSize)
 
     chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
-    id_list = Array{Float32, 1}(undef, size_tot)
+    id_list = Array{Int32, 1}(undef, size_tot)
     pos = 1
 
     for e in ProgressBar(expId_list)
@@ -134,14 +134,14 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::A
     size_tot = sum(expSize)
 
     chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
-    id_list = Array{Float32, 1}(undef, size_tot)
+    id_list = Array{Int32, 1}(undef, size_tot)
     pos = 1
 
     for e in ProgressBar(expId_list)
         n = expSize[findfirst(x -> x == e, expId_list)]
         tmp = read(file, e)["chains"]
 
-        chains_mtx[pos:n-1,1:length(chains_colName)]=tmp
+        chains_mtx[pos:pos+n-1,1:length(chains_colName)]=tmp
         id_list[pos:pos+n-1] = repeat([si.str2id[e]], n)
         
         pos += n
@@ -234,7 +234,7 @@ function getPosteriorCurves(posterior_df, xmin, xmax)
 
     for i = 1:nrow(posterior_df)
         tmp = posterior_df[i,[:LDR, :HDR, :ic50, :slope]]
-        f = llogistic(tmp)
+        f = llogistic(Array(tmp))
         y_tmp = f.(xDose)
         
         push!(curves_df, y_tmp)

@@ -84,15 +84,24 @@ for i in 1:length(dataset)
     dt = dataset[i]
     println("### $dt")
 
-    println("Get data")
-    data_df = getRawData_h5(dt, false)
+    println("1. Get data and metrics")
+    print("--> List of expId ")
+    @time expId_list = getExpId_h5(dt);
+
+    print("--> StrIndex ")
+    @time si = Utils.StrIndex(expId_list);
+
+    println("--> Raw data ")
+    @time data_df = getRawData_h5(dt, false, si);
+
+    println("--> Calculate Viab. SD")
     sd_df = combine(groupby(data_df, :exp_id), :Viability => std => :std_viability)
     expId_complete = sd_df[sd_df.std_viability .>= 20, :exp_id]
     expId_incomplete = sd_df[sd_df.std_viability .< 20, :exp_id]
 
-    println("Get pairings")
+    println("2. Get pairings")
     println("---> all")
-    pairings_df = getPairings_h5(dt)
+    pairings_df = getPairings_h5(dt, si)
     println("---> complete a.k.a both exp. with SD ≥ 20")
     pairingComplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_complete && y ∈ expId_complete, pairings_df)
     println("---> incomplete a.k.a both exp with SD < 20")
@@ -101,21 +110,21 @@ for i in 1:length(dataset)
     pairingMixte_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete || y ∈ expId_incomplete, pairings_df)
 
     println("---> converge a.k.a. both exp. converge for LM")
-    mlPaired_df = getMLestimates([dt], pairings_df)
+    mlPaired_df = getMLestimates(dt, si, pairings_df)
     pairingConverge_df = filter([:convergence_rep1, :convergence_rep2] => (a, b) -> a + b == 2, mlPaired_df)
 
-    println("Pairings descriptors")
+    println("3. Pairings descriptors")
     pairs_desc = [pairings_df, pairingComplete_df, pairingIncomplete_df, pairingMixte_df, pairingConverge_df]
     pairs_names = ["all pairs", "complete pairs", "incomplete pairs", "mixte pairs", "converged pairs"]
     N = [nrow(df) for df in pairs_desc]
     
-    println("Get posterior pairings")
+    println("4. Get posterior pairings")
     all_type_rep = DataFrame()
     for j in 1:length(N)
         println("---> $j/",length(N))
-        tmp1 = getPosterior_h5(dt, false, Array(pairs_desc[j].rep_1))
+        tmp1 = getPosterior_h5(dt, false, si, Array(pairs_desc[j].rep_1))
         rename!(tmp1, map(x -> "$x"*"_rep1", names(tmp1)))
-        tmp2 = getPosterior_h5(dt, false, Array(pairs_desc[j].rep_2))
+        tmp2 = getPosterior_h5(dt, false, si, Array(pairs_desc[j].rep_2))
         rename!(tmp2, map(x -> "$x"*"_rep2", names(tmp2)))
         tmp = hcat(tmp1, tmp2)
 
@@ -124,7 +133,7 @@ for i in 1:length(dataset)
         all_type_rep = vcat(all_type_rep, tmp)
     end
 
-    println("Plot posterior pairs by metrics")
+    println("5. Plot posterior pairs by metrics")
     Gadfly.set_default_plot_size(10inch, 4inch)
     for pr in bidra_params
         println(pr)
@@ -146,7 +155,7 @@ for i in 1:length(dataset)
         draw(PDF("$figure_prefix"*"$dt"*"_"*string(pr)*"_posterior.pdf", 10inch, 4inch), p)
     end
 
-    println("Get LM pairings")
+    println("6. Get LM pairings")
     all_type_rep_LM = DataFrame()
     for j in 1:length(N)
         println("---> $j/",length(N))
@@ -155,7 +164,7 @@ for i in 1:length(dataset)
         all_type_rep_LM = vcat(all_type_rep_LM, tmp)
     end
 
-    println("Plot LM pairs by metrics")
+    println("7. Plot LM pairs by metrics")
     Gadfly.set_default_plot_size(10inch, 4inch)
     for pr in bidra_params
         println(pr)

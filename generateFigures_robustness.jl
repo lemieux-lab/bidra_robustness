@@ -59,7 +59,7 @@ for i in 1:length(datasets)
 
     println("---> Plotting IC50 posterior vs. std")
     subset_df = metricZoom_subset(posterior_df, :ic50, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2]);
-    p = ic50_std_plot(posterior_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds);
+    p = ic50_std_plot(subset_df, metrics_bounds[:ic50][1], metrics_bounds[:ic50][2], concentrationBounds);
     if dt == "gCSI"
         exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, subset_df)
         tmp_interval = combine(groupby(exp_subset_df, :exp_id), :ic50 => (x -> percentile(x, [2.5, 97.5])) => :interval)

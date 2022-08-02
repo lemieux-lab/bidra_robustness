@@ -1,8 +1,10 @@
+push!(LOAD_PATH, "Utils/")
 using DataFrames
 using Statistics, StatsBase
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
 using ProgressBars
+using Utils
 
 include("utils.jl")
 fn = "_generated_figures/supp_fig/viab_corr/"
@@ -14,9 +16,11 @@ dt = ARGS[1]
 
 ### Get data
 println("1. Get data")
-pairings_df = getPairings_h5(dt)
-pairings_df.pairID = collect(1:nrow(pairings_df))
-viability_df = getRawData_h5(dt, false)
+expId_list = getExpId_h5(dt);
+si = Utils.StrIndex(expId_list);
+pairings_df = getPairings_h5(dt, si);
+pairings_df.pairID = collect(1:nrow(pairings_df));
+viability_df = getRawData_h5(dt, false, si);
 
 println("2. Pair experiments responses")
 rep1 = innerjoin(pairings_df[:, [:rep_1, :pairID]], viability_df, on=:rep_1=>:exp_id)

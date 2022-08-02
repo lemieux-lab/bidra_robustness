@@ -2,6 +2,7 @@ using DataFrames
 using Distributions, Statistics, StatsBase
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
+using Utils
 
 include("utils.jl")
 include("plot_utils.jl")
@@ -27,16 +28,25 @@ for i in 1:length(datasets)
     dt = datasets[i]
     println("**********************", dt, "**********************")
     println("1. Get data and metrics")
-    @time data_df = getRawData_h5(dt, false)
-    @time expId_list = getExpId_h5(dt)
+    print("--> List of expId ")
+    @time expId_list = getExpId_h5(dt);
 
-    @time ml_df = getMLestimates([dt])
-    tmp = get_converged(ml_df)
+    print("--> StrIndex ")
+    @time si = Utils.StrIndex(expId_list);
+
+    println("--> Raw data ")
+    @time data_df = getRawData_h5(dt, false, si);
+
+    println("--> ML estimates")
+    @time ml_df = getMLestimates(dt, si);
+    tmp = get_converged(ml_df);
     
     ###### Median vs. ML estimations ##########
-    println("2. Comparing LM estimate to posterior median")
-    posterior_df = getPosterior_h5(dt, false)
-    metrics_df = get_median(posterior_df, eff_metrics, ml_df)
+    println("--> Posterior distributions")
+    @time posterior_df = getPosterior_h5(dt, false, si);
+
+    println("--> Add median and metrics")
+    metrics_df = get_median(posterior_df, eff_metrics, ml_df);
 
     for em in eff_metrics
         println("---> ", em)
@@ -45,8 +55,8 @@ for i in 1:length(datasets)
         em_prior = getPriors[string(em)](N)
         p = medianML_hexbin_plot(em_subset_df, em, metrics_bounds[em][1], metrics_bounds[em][2], em_prior)
 
-        if dt == datasets[1]
-            exp_subset_df = filter(:exp_id => x -> x ∈ expIdSubset_list, metrics_df)
+        if dt == "gCSI"
+            exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, metrics_df)
             push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_median"), y=em, Geom.point(), order=1))
         end
 

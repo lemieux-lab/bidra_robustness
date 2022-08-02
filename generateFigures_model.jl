@@ -1,34 +1,34 @@
+push!(LOAD_PATH, "Utils/")
 using Statistics, StatsBase
 using Distributions
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
+using Utils
 
 include("utils.jl")
 
 ###### Global Var ####
 figure_prefix = "_generated_figures/supp_fig/models/"
+datasets= ["gray", "gCSI", "ctrpv2"]
+expId_list = mapreduce(dt -> getExpId_h5(dt), vcat, datasets);
+nId_list = map(dt -> length(getExpId_h5(dt)), datasets);
+si = StrIndex(expId_list)
 
 ###### Data ##########
-data_df = DataFrame()
-for dt in ["gray", "gCSI", "ctrpv2"]
-        println(dt)
-        @time tmp = getRawData_h5(dt, false)
-        tmp[!, :dataset] = repeat([dt], nrow(tmp))
-        data_df = vcat(data_df, tmp)
-        println()
-end
+data_df = mapreduce(dt -> getRawData_h5(dt, false, si), vcat, datasets);
+ml_df = mapreduce(dt -> getMLestimates(dt, si), vcat, datasets);
 
 ### example experiments from gCSI
-expId_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b"]
-mle_df = getMLestimates(["gCSI"], false, [])
-mle_df = filter(:exp_id => x -> x ∈ expId_list, mle_df)
-posterior_df = getBIDRAposterior("gCSI", expId_list)
+expId_subset_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b", "HCC78_Lapatinib_11a"];
+data_subset = filter(:exp_id => x -> si.id2str[x] ∈ expId_subset_list, data_df);
+ml_subset = filter(:exp_id => x -> si.id2str[x] ∈ expId_subset_list, ml_df);
+posterior_subset = getPosterior_h5("gCSI", false, si, expId_subset_list);
 
 ### Raw data overlook
 maxConcentration_df = combine(groupby(data_df, :exp_id), 
         :Concentration => maximum => :Concentration, 
         [:Concentration, :Viability] => ((a,b) -> b[argmax(a)])  => :Viability,
-        [:Concentration, :dataset] => ((a,b) -> b[argmax(a)])  => :dataset)
+        [:Concentration, :dataset] => ((a,b) -> b[argmax(a)])  => :dataset);
 
 minConcentration_df = combine(groupby(data_df, :exp_id), 
         :Concentration => minimum => :Concentration, 
@@ -119,15 +119,12 @@ draw(PDF(figure_prefix*"sigma_prior.pdf", 4inch, 3inch), p8)
 
 
 ### Examples of analysis
-viab_subset = filter(:exp_id => x -> x ∈ expId_list, data_df)
-subset_posterior = getBIDRAposterior("gCSI", expId_list)
-
 Gadfly.set_default_plot_size(6inch, 4inch)
-p9 = Gadfly.plot(layer(viab_subset, x=:Concentration, y=:Viability, color=:exp_id, Geom.point()))
+p9 = Gadfly.plot(layer(data_subset, x=:Concentration, y=:Viability, color=si.id2str[data_subset.exp_id], Geom.point()), Scale.color_discrete())
 
-for e in expId_list
+for e in expId_subset_list
         println(e)
-        postCurves = getPosteriorCurves(filter(:exp_id => x -> x == e, subset_posterior), -4, 1)
+        postCurves = getPosteriorCurves(filter(:exp_id => x -> si.id2str[x] == e, posterior_subset), -4, 1)
         xDose = parse.(Float64, names(postCurves))
 
         med_curve = median.(eachcol(postCurves))
@@ -135,10 +132,9 @@ for e in expId_list
         lower_curve = percentile.(eachcol(postCurves), 2.5)
         push!(p9, layer(x=xDose, y=med_curve, color=[e], linestyle=[:dot], Geom.line()))
         
-        mleFit = llogistic(filter(:exp_id => x -> x == e, mle_df)[1, [:LDR, :HDR, :ic50, :slope]])
+        mleFit = llogistic(Array(filter(:exp_id => x -> si.id2str[x] == e, ml_subset)[1, [:LDR, :HDR, :ic50, :slope]]))
         yViability = mleFit.(xDose)
         push!(p9, layer(x=xDose, y=yViability, color=[e], Geom.line()))
-        
         push!(p9, layer(x=xDose, ymin=lower_curve, ymax=upper_curve, color=[e], alpha=[0.3], Geom.ribbon()))
 end
 display(p9)
@@ -146,9 +142,9 @@ draw(PDF(figure_prefix*"curves_examples.pdf", 6inch, 4inch), p9)
 
 ### posterior distributions
 Gadfly.set_default_plot_size(4inch, 2inch)
-for e in expId_list
-        tmp = filter(:exp_id => x -> x == e, subset_posterior)
-        est = filter(:exp_id => x -> x == e, mle_df)[1, :HDR]
+for e in expId_subset_list
+        tmp = filter(:exp_id => x -> si.id2str[x] == e, posterior_subset)
+        est = filter(:exp_id => x -> si.id2str[x] == e, ml_subset)[1, :HDR]
         p10 = Gadfly.plot(layer(x=hdr_prior, Geom.density(bandwidth=1)),
                          layer(tmp, x=:HDR, Geom.histogram(position=:stack, bincount=200, density=true)),
                          layer(xintercept=[est], Geom.vline()),
@@ -158,8 +154,8 @@ for e in expId_list
 end
 
 for e in expId_list
-        tmp = filter(:exp_id => x -> x == e, subset_posterior)
-        est = filter(:exp_id => x -> x == e, mle_df)[1, :LDR]
+        tmp = filter(:exp_id => x -> si.id2str[x] == e, posterior_subset)
+        est = filter(:exp_id => x -> si.id2str[x] == e, ml_subset)[1, :LDR]
         p10 = Gadfly.plot(layer(x=ldr_prior, Geom.density(bandwidth=1)),
                          layer(tmp, x=:LDR, Geom.histogram(position=:stack, bincount=200, density=true)),
                          layer(xintercept=[est], Geom.vline()),
@@ -169,8 +165,8 @@ for e in expId_list
 end
 
 for e in expId_list[1:1]
-        tmp = filter(:exp_id => x -> x == e, subset_posterior)
-        est = filter(:exp_id => x -> x == e, mle_df)[1, :ic50]
+        tmp = filter(:exp_id => x -> si.id2str[x] == e, subset_posterior)
+        est = filter(:exp_id => x -> si.id2str[x] == e, ml_subset)[1, :ic50]
         p10 = Gadfly.plot(layer(x=ic50_prior, Geom.density(bandwidth=1)),
                          layer(tmp, x=:ic50, Geom.histogram(position=:stack, bincount=200, density=true)),
                          layer(xintercept=[est], Geom.vline()),
