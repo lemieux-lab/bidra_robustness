@@ -3,13 +3,12 @@ using Statistics, StatsBase
 using Distributions
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
-using Utils
 
 include("utils.jl")
 
 ###### Global Var ####
 figure_prefix = "_generated_figures/supp_fig/models/"
-datasets= ["gray", "gCSI", "ctrpv2"]
+datasets= ["gCSI"]#["gray", "gCSI", "ctrpv2"]
 expId_list = mapreduce(dt -> getExpId_h5(dt), vcat, datasets);
 nId_list = map(dt -> length(getExpId_h5(dt)), datasets);
 si = StrIndex(expId_list)
@@ -141,36 +140,45 @@ display(p9)
 draw(PDF(figure_prefix*"curves_examples.pdf", 6inch, 4inch), p9)
 
 ### posterior distributions
+### Add ΔHDR
 Gadfly.set_default_plot_size(4inch, 2inch)
 for e in expId_subset_list
         tmp = filter(:exp_id => x -> si.id2str[x] == e, posterior_subset)
         est = filter(:exp_id => x -> si.id2str[x] == e, ml_subset)[1, :HDR]
+        ΔHDR = diff(percentile(tmp.HDR, [2.5, 97.5]))[1]
         p10 = Gadfly.plot(layer(x=hdr_prior, Geom.density(bandwidth=1)),
                          layer(tmp, x=:HDR, Geom.histogram(position=:stack, bincount=200, density=true)),
-                         layer(xintercept=[est], Geom.vline()),
-                         Coord.Cartesian(xmin=-10, xmax=110))
+                         layer(xintercept=[est], Geom.vline(color=colorant"black")),
+                         layer(xintercept=percentile(tmp.HDR, [2.5, 97.5]), Geom.vline()),
+                         Coord.Cartesian(xmin=-10, xmax=110),
+                         Guide.title("ΔHDR = $ΔHDR"))
         draw(PDF(figure_prefix*"HDR_posterior_prior_"*e*".pdf", 4inch, 2inch), p10)
         #display(p10)
 end
 
-for e in expId_list
+for e in expId_subset_list
         tmp = filter(:exp_id => x -> si.id2str[x] == e, posterior_subset)
         est = filter(:exp_id => x -> si.id2str[x] == e, ml_subset)[1, :LDR]
         p10 = Gadfly.plot(layer(x=ldr_prior, Geom.density(bandwidth=1)),
                          layer(tmp, x=:LDR, Geom.histogram(position=:stack, bincount=200, density=true)),
-                         layer(xintercept=[est], Geom.vline()),
+                         layer(xintercept=[est], Geom.vline(color=colorant"black")),
+                         layer(xintercept=percentile(tmp.LDR, [2.5, 97.5]), Geom.vline()),
                          Coord.Cartesian(xmin=90, xmax=120))
         draw(PDF(figure_prefix*"LDR_posterior_prior_"*e*".pdf", 4inch, 2inch), p10)
         #display(p10)
 end
 
-for e in expId_list[1:1]
-        tmp = filter(:exp_id => x -> si.id2str[x] == e, subset_posterior)
+### Add exp.dose-range
+for e in expId_subset_list
+        tmp = filter(:exp_id => x -> si.id2str[x] == e, posterior_subset)
         est = filter(:exp_id => x -> si.id2str[x] == e, ml_subset)[1, :ic50]
+        data_subset = filter(:exp_id => x -> x == si.str2id[e], data_df)
         p10 = Gadfly.plot(layer(x=ic50_prior, Geom.density(bandwidth=1)),
                          layer(tmp, x=:ic50, Geom.histogram(position=:stack, bincount=200, density=true)),
-                         layer(xintercept=[est], Geom.vline()),
-                         Coord.Cartesian(xmin=-1, xmax=2))
+                         layer(xintercept=[est], Geom.vline(color=colorant"black")),
+                         layer(xintercept=percentile(tmp.ic50, [2.5, 97.5]), Geom.vline()),
+                         layer(xintercept=[minimum(data_subset.Concentration), maximum(data_subset.Concentration)], Geom.vline(color=colorant"orange")),
+                         Coord.Cartesian(xmin=-5, xmax=5))
         draw(PDF(figure_prefix*"ic50_posterior_prior_"*e*".pdf", 4inch, 2inch), p10)
         display(p10)
 end
