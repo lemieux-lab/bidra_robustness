@@ -40,6 +40,45 @@ function getExpId_h5(dt::String)
     return h5read(fn_h5, "info")["exp_id"]
 end
 
+function getRawData_h5(dt::String, localVar::Bool)
+    ### Define path
+    if localVar
+        fn_h5 = checkFile("data/local_$dt"*"_complete.h5")
+    else
+        fn_h5 = checkFile("data/$dt"*"_complete.h5")
+    end
+
+    ### Get list of expID
+    expId_list = getExpId_h5(dt)
+
+    ### Import responses and concentration
+    file = h5open(fn_h5, "r")
+    expSize = map(e -> size(file[e*"/data"])[1], expId_list)
+    size_tot = sum(expSize)
+    
+    ## Alocate memory for each column
+    concentration_list = Array{Float32, 1}(undef, size_tot)
+    viability_list = Array{Float32, 1}(undef, size_tot)
+    id_list = Array{String, 1}(undef, size_tot)
+    pos = 1
+
+    for e in ProgressBar(expId_list)
+        n = expSize[findfirst(x -> x == e, expId_list)]
+        tmp = read(file, e)["data"]
+
+        concentration_list[pos:pos+n-1] = tmp[1:n]
+        viability_list[pos:pos+n-1] = tmp[n+1:end]
+        id_list[pos:pos+n-1] = repeat([e], n)
+
+        pos += n
+    end
+    close(file)
+
+    ### Build dataframe
+    data_df = DataFrame(Concentration=concentration_list, Viability=viability_list, exp_id=id_list, dataset=repeat([dt], length(concentration_list)))
+    return data_df
+end
+
 function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
     ### Define path
     if localVar
