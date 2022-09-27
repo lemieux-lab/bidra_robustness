@@ -28,7 +28,7 @@ end
 grouped_expID = load(joinpath(data_prefix, "rep_more2_pairing.jld2"))[dt]
 R = 10000
 
-for r in 1:R
+for r in 2902:R
     println("Resampling $r")
     tmp = mapreduce(g -> DataFrame(g[rand(1:nrow(g), 2), :]), vcat, groupby(grouped_expID, :pairs))
     pairing_df = DataFrame(rep_1 = tmp.exp_id_unique[1:2:end], rep_2 = tmp.exp_id_unique[2:2:end])
