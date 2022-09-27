@@ -1,6 +1,6 @@
 using DataFrames, HDF5
 using CSV
-using Optim, GLM, LsqFit
+using Optim, GLM, LsqFit, StatsBase
 using Glob
 using ProgressBars
 using JuBox

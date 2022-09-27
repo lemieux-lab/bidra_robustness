@@ -3,6 +3,7 @@ include("../utils.jl")
 
 dt = ARGS[1]
 data_prefix = "correlation_metrics/"
+bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 function doCorrelation(df::DataFrame, rep::Int)
     results_prefix = "_generated_data/"
@@ -32,7 +33,6 @@ for r in 1:R
     tmp = mapreduce(g -> DataFrame(g[rand(1:nrow(g), 2), :]), vcat, groupby(grouped_expID, :pairs))
     pairing_df = DataFrame(rep_1 = tmp.exp_id_unique[1:2:end], rep_2 = tmp.exp_id_unique[2:2:end])
     mlPaired_df = getMLestimates(dt, pairing_df)
-    bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
     ### replace Inf aac by Nan
     mlPaired_df[!, :aac_rep_1] = replace(mlPaired_df.aac_rep1, Inf => NaN, -Inf => NaN)
