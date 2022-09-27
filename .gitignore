@@ -17,4 +17,5 @@ _generated_figures/
 
 ## Data
 correlation_metrics/*_pairing.csv
-correlation_metrics/rep2_pairing.h5
+correlation_metrics/*.h5
+correlation_metrics/*.jld2

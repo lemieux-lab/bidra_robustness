@@ -192,6 +192,43 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::A
     return chains_df
 end
 
+function getPosterior_h5(dt::String, localVar::Bool, expId_list::Array)
+    ### Define path
+    if localVar 
+        fn_h5 = "data/local_$dt"*"_complete.h5"
+    else
+        fn_h5 = "data/$dt"*"_complete.h5"
+    end
+
+    ### Import all posterior
+    file = h5open(fn_h5, "r")
+
+    ## Alocate memory for each column
+    chains_colName = read(file, "info")["chains_colNames"]
+    expSize = map(e -> size(file[e*"/chains"])[1], expId_list)
+    size_tot = sum(expSize)
+
+    chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
+    id_list = Array{String, 1}(undef, size_tot)
+    pos = 1
+
+    for e in ProgressBar(expId_list)
+        n = expSize[findfirst(x -> x == e, expId_list)]
+        tmp = read(file, e)["chains"]
+
+        chains_mtx[pos:pos+n-1,1:length(chains_colName)]=tmp
+        id_list[pos:pos+n-1] = repeat([e], n)
+        
+        pos += n
+    end
+    close(file)
+
+    chains_df = DataFrame(chains_mtx, :auto)
+    rename!(chains_df, chains_colName)
+    chains_df[!, :exp_id] = id_list
+    return chains_df
+end
+
 function llogistic(param::Array) 
     LDR, HDR, ic50, slope = param    
     return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
