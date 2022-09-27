@@ -16,15 +16,15 @@ mlPaired_df = getMLestimates([dt], pairings_df)
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 ### replace Inf aac by Nan
-mlPaired_df[!, :aac_rep_1] = replace(mlPaired_df.aac_rep_1, Inf => NaN, -Inf => NaN)
-mlPaired_df[!, :aac_rep_2] = replace(mlPaired_df.aac_rep_2, Inf => NaN, -Inf => NaN)
+mlPaired_df[!, :aac_rep1] = replace(mlPaired_df.aac_rep_1, Inf => NaN, -Inf => NaN)
+mlPaired_df[!, :aac_rep2] = replace(mlPaired_df.aac_rep_2, Inf => NaN, -Inf => NaN)
 
 function doCorrelation(df::DataFrame, description::String)
     results_prefix = "_generated_data/"
 
     for pr in bidra_params
-        rep1 = Symbol(pr,"_rep_1")
-        rep2 = Symbol(pr,"_rep_2")
+        rep1 = Symbol(pr,"_rep1")
+        rep2 = Symbol(pr,"_rep2")
 
         tmp = filter(rep1 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), df)
         tmp = filter(rep2 => x -> !any(f -> f(x), (ismissing, isnothing, isnan)), tmp)

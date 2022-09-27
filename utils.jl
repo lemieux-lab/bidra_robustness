@@ -1,10 +1,9 @@
-push!(LOAD_PATH, "Utils/")
 using DataFrames, HDF5
 using CSV
 using Optim, GLM, LsqFit
 using Glob
 using ProgressBars
-using Utils ### from lemieux-lab
+using JuBox
 
 
 function checkFile(fn::String)
@@ -230,7 +229,7 @@ function getMLestimates(dt::String, si::StrIndex)
 end
 
 function getMLestimates(dt::String, si::StrIndex, pairing_df::DataFrame)
-    mle_data = getMLestimates(dt,st)
+    mle_data = getMLestimates(dt,si)
     
     mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
     mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset, :convergence]]
@@ -239,8 +238,34 @@ function getMLestimates(dt::String, si::StrIndex, pairing_df::DataFrame)
     mle_tmp = innerjoin(mle_tmp, mle_data, on=:rep_2 => :exp_id, renamecols=("" => "_rep2"))
     
     mle_data_paired = filter(row -> !isnan(row.LDR_rep1) && !isnan(row.LDR_rep2), mle_tmp)
-    mle_data_paired[!, :aac_rep_1] = replace(mle_data.aac_rep1, Inf => NaN, -Inf => NaN)
-    mle_data_paired[!, :aac_rep_2] = replace(mle_data.aac_rep2, Inf => NaN, -Inf => NaN)
+    mle_data_paired[!, :aac_rep1] = replace(mle_data_paired.aac_rep1, Inf => NaN, -Inf => NaN)
+    mle_data_paired[!, :aac_rep2] = replace(mle_data_paired.aac_rep2, Inf => NaN, -Inf => NaN)
+    
+    return mle_data_paired
+end
+
+function getMLestimates(dt::String)
+    mle_prefix = "data/all_julia_curveFit.csv"
+    mle_data = readCSV(mle_prefix, true)
+
+    ## Only select estimate for datasets
+    mle_data_dt = filter(:dataset => x -> x == dt, mle_data)
+    mle_data_dt[!, :exp_id] = [v for v in mle_data_dt.exp_id]
+    return mle_data_dt
+end
+
+function getMLestimates(dt::String, pairing_df::DataFrame)
+    mle_data = getMLestimates(dt)
+    
+    mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
+    mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset, :convergence]]
+
+    mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep1"))
+    mle_tmp = innerjoin(mle_tmp, mle_data, on=:rep_2 => :exp_id, renamecols=("" => "_rep2"))
+    
+    mle_data_paired = filter(row -> !isnan(row.LDR_rep1) && !isnan(row.LDR_rep2), mle_tmp)
+    mle_data_paired[!, :aac_rep1] = replace(mle_data_paired.aac_rep1, Inf => NaN, -Inf => NaN)
+    mle_data_paired[!, :aac_rep2] = replace(mle_data_paired.aac_rep2, Inf => NaN, -Inf => NaN)
     
     return mle_data_paired
 end
