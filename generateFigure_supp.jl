@@ -3,7 +3,7 @@ using Cairo, Fontconfig
 
 include("utils.jl")
 
-#### Correlation of expeirments with multiple replicate
+#### Correlation of experiments with multiple replicates
 figure_prefix = "_generated_figures/supp_fig/multiRep_corr/"
 
 ## Sampling analysis
@@ -42,5 +42,11 @@ p = Gadfly.plot(multiRep_all, x=:method, y=:rₛ, color=:method, xgroup=:param,y
 draw(PDF(figure_prefix*"sampling_rep_all.pdf", 10inch, 10inch), p)
 
 
-## Metrics SD by grouped of multi replicates
-dt = "gray"
+#### Correlation of experiments with multiple replicates
+figure_prefix_across = "_generated_figures/supp_fig/across_dataset/"
+
+## Correlation analysis
+acrossCorr = readCSV("_generated_data/acrossDataset_correlations.csv", true)
+p = Gadfly.plot(acrossCorr, x=:method, y=:rₛ, xgroup=:param, ygroup=:pair, color=:method,
+                Geom.subplot_grid(Geom.bar()))
+draw(PDF(figure_prefix_across*"correlation_by_metho.pdf", 6inch, 6inch), p)
