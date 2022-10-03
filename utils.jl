@@ -163,6 +163,10 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::A
         fn_h5 = "data/$dt"*"_complete.h5"
     end
 
+    if eltype(pairing_df.rep_1) != String
+        expId_list = [si.id2str[e] for e in expId_list]
+    end
+
     ### Import all posterior
     file = h5open(fn_h5, "r")
 
@@ -239,7 +243,7 @@ function getPairings_h5(dt::String, si::StrIndex)
     df = DataFrame(h5read(fn, dt))
 
     df[!,:rep_1] = [si.str2id[v] for v in df[!,:rep_1]]
-    df[!,:rep_] = [si.str2id[v] for v in df[!,:rep_2]]
+    df[!,:rep_2] = [si.str2id[v] for v in df[!,:rep_2]]
     return df
 end
 
@@ -255,6 +259,16 @@ function getPairedPosterior_h5(dt::String)
     return hcat(posterior_rep1, posterior_rep2)
 end
 
+function getPairedPosterior_h5(pairings_df::DataFrame, si::StrIndex, pair::Array{String, 1})
+    posterior_rep1 = getPosterior_h5(pair[1], false, si, Array(pairings_df.rep_1))
+    rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
+
+    posterior_rep2 = getPosterior_h5(pair[2], false, si, Array(pairings_df.rep_2))
+    rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
+
+    return hcat(posterior_rep1, posterior_rep2)
+end
+
 function getMLestimates(dt::String, si::StrIndex)
     mle_prefix = "data/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true)
@@ -263,6 +277,30 @@ function getMLestimates(dt::String, si::StrIndex)
     mle_data_dt = filter(:dataset => x -> x == dt, mle_data)
     mle_data_dt[!, :exp_id] = [si.str2id[v] for v in mle_data_dt.exp_id]
     return mle_data_dt
+end
+
+function getMLestimates(si::StrIndex, expId_list::Array)
+    mle_prefix = "data/all_julia_curveFit.csv"
+    mle_data = readCSV(mle_prefix, true)
+
+    ## Only select estimate for datasets
+    mle_data_dt = filter(:exp_id => x -> si.str2id[x] ∈ expId_list, mle_data)
+    mle_data_dt[!, :exp_id] = [si.str2id[v] for v in mle_data_dt.exp_id]
+    return mle_data_dt
+end
+
+function getMLestimates(si::StrIndex, pairing_df::DataFrame)
+    mle_data_rep1 = getMLestimates(si, pairing_df.rep_1)[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
+    mle_data_rep2 = getMLestimates(si, pairing_df.rep_2)[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
+
+    mle_tmp = innerjoin(pairing_df, mle_data_rep1, on=:rep_1 => :exp_id, renamecols=("" => "_rep1"))
+    mle_tmp = innerjoin(mle_tmp, mle_data_rep2, on=:rep_2 => :exp_id, renamecols=("" => "_rep2"))
+    
+    mle_data_paired = filter(row -> !isnan(row.LDR_rep1) && !isnan(row.LDR_rep2), mle_tmp)
+    mle_data_paired[!, :aac_rep1] = replace(mle_data_paired.aac_rep1, Inf => NaN, -Inf => NaN)
+    mle_data_paired[!, :aac_rep2] = replace(mle_data_paired.aac_rep2, Inf => NaN, -Inf => NaN)
+    
+    return mle_data_paired
 end
 
 function getMLestimates(dt::String, si::StrIndex, pairing_df::DataFrame)
