@@ -8,8 +8,8 @@ using Utils
 ### Global Var
 figure_prefix = "_generated_figures/discrepancies_replicates/"
 
-function correlationBarPlot(df::DataFrame, t::String)
-    p=Gadfly.plot(df, x=:description, y=:rₛ, color=:dataset, xgroup=:param, ygroup=:dataset,
+function correlationBarPlot(df::DataFrame, t::String, coef::Symbol)
+    p=Gadfly.plot(df, x=:description, y=coef, color=:dataset, xgroup=:param, ygroup=:dataset,
                   Geom.subplot_grid( Geom.bar(position=:dodge)),
                   Guide.title(t))
     display(p)
@@ -21,17 +21,17 @@ function addMethods(df::DataFrame, method::String)
 end
 
 ### Import correlation
-ml_correlation = readCSV("_generated_data/mlCorrelations.csv", true, false, "")
-median_correlation = readCSV("_generated_data/medianCorrelations.csv", true, false, "")
-ci_correlation = readCSV("_generated_data/ciCorrelations.csv", true, false, "")
-posterior_correlation = readCSV("_generated_data/posteriorCorrelations.csv", true, false, "")
-qq_correlation = readCSV("_generated_data/qqCorrelations.csv", true, false, "")
+ml_correlation = readCSV("_generated_data/mlCorrelations.csv", true)
+median_correlation = readCSV("_generated_data/medianCorrelations.csv", true)
+ci_correlation = readCSV("_generated_data/ciCorrelations.csv", true,)
+posterior_correlation = readCSV("_generated_data/posteriorCorrelations.csv", true)
+qq_correlation = readCSV("_generated_data/qqCorrelations.csv", true, )
 
 ### Plot correlations of individual methods
 Gadfly.set_default_plot_size(5inch, 4inch)
-correlationBarPlot(ml_correlation, "Marqaurdt-Levenberg Correlations")
-correlationBarPlot(median_correlation, "BiDRA's median Correlations")
-correlationBarPlot(qq_correlation, "BiDRA's QQ Correlations")
+correlationBarPlot(ml_correlation, "Marqaurdt-Levenberg Correlations", :rₛ)
+correlationBarPlot(median_correlation, "BiDRA's median Correlations", :rₛ)
+correlationBarPlot(qq_correlation, "BiDRA's QQ Correlations", :rₛ)
 
 ### Combine all correlations methods results and plot
 ml_correlation = addMethods(ml_correlation, "ML")
@@ -45,7 +45,12 @@ all_correlation_pairs = filter([:description, :param] => (x, y) -> x ∈ ["all p
 p = Gadfly.plot(all_correlation_pairs, x=:method, y=:rₛ, color=:description, xgroup=:param, ygroup=:dataset, 
             Geom.subplot_grid(Geom.bar(position=:dodge)),
             Guide.title("All Pairs correlations"))
-draw(PDF("$figure_prefix"*"all_dt_correlations.pdf", 6inch, 4inch), p)
+draw(PDF("$figure_prefix"*"all_dt_correlations_spearman.pdf", 6inch, 4inch), p)
+
+p = Gadfly.plot(all_correlation_pairs, x=:method, y=:r, color=:description, xgroup=:param, ygroup=:dataset, 
+            Geom.subplot_grid(Geom.bar(position=:dodge)),
+            Guide.title("All Pairs correlations"))
+draw(PDF("$figure_prefix"*"all_dt_correlations_pearson.pdf", 6inch, 4inch), p)
 
 ### Plot correlation by "completeness"
 corr_subset = filter(:description => x -> x ∉ ["mixte pairs", "converged pairs"], all_correlation)
@@ -54,14 +59,23 @@ corr_subset_dt = filter(:dataset => x -> x == dt, corr_subset)
 
 Gadfly.set_default_plot_size(10inch, 8inch)
 p = Gadfly.plot(corr_subset, x=:description, y=:rₛ, color=:method, ygroup=:param, xgroup=:dataset, Geom.subplot_grid(Geom.bar(position=:dodge)))
-draw(PDF("$figure_prefix"*"all_dt_correlations_grouped.pdf", 10inch, 8inch), p)
+draw(PDF("$figure_prefix"*"all_dt_correlations_grouped_spearman.pdf", 10inch, 8inch), p)
+
+Gadfly.set_default_plot_size(10inch, 8inch)
+p = Gadfly.plot(corr_subset, x=:description, y=:r, color=:method, ygroup=:param, xgroup=:dataset, Geom.subplot_grid(Geom.bar(position=:dodge)))
+draw(PDF("$figure_prefix"*"all_dt_correlations_grouped_pearson.pdf", 10inch, 8inch), p)
+
+p = Gadfly.plot(corr_subset, x=:r, y=:rₛ, ygroup=:dataset, xgroup=:param, color=:description, shape=:method,
+                    Geom.subplot_grid(Geom.point, Geom.abline()))
+draw(PDF("$figure_prefix"*"all_dt_correlations_spearman_pearson.pdf", 10inch, 8inch), p)
+
 
 ### Correlations of random pairings
-bidra_randomRep = readCSV("_generated_data/bidraRandomCorrelation.csv", true, false, "")
+bidra_randomRep = readCSV("_generated_data/bidraRandomCorrelation.csv", true)
 bidra_randomRep_qq = filter(:method => x -> x == "qq", bidra_randomRep)
 bidra_randomRep_qq = filter(:param => x -> x != "aac", bidra_randomRep_qq)
 
-ml_randomRep = readCSV("_generated_data/mlRandomCorrelations.csv", true, false, "")
+ml_randomRep = readCSV("_generated_data/mlRandomCorrelations.csv", true)
 ml_randomRep[!, :description] = ml_randomRep[:, :method]
 ml_randomRep[!, :method] = repeat(["ML"], nrow(ml_randomRep))
 
@@ -72,7 +86,13 @@ p = Gadfly.plot(randomRep_compare, x=:description, y=:rₛ , color=:dataset, xgr
             Geom.subplot_grid(Geom.boxplot()),
             Guide.title("Random Pairings All dataset"))
 #display(p)
-draw(PDF("$figure_prefix"*"random_pairings.pdf", 10inch, 6inch), p)
+draw(PDF("$figure_prefix"*"random_pairings_spearman.pdf", 10inch, 6inch), p)
+
+p = Gadfly.plot(randomRep_compare, x=:description, y=:r , color=:dataset, xgroup=:param, ygroup=:method, 
+            Geom.subplot_grid(Geom.boxplot()),
+            Guide.title("Random Pairings All dataset"))
+#display(p)
+draw(PDF("$figure_prefix"*"random_pairings_pearson.pdf", 10inch, 6inch), p)
 
 ### Plot pairing correlation by param x dataset x method x description
 dataset = ["gray", "gCSI", "ctrpv2"]
