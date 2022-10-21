@@ -430,3 +430,17 @@ function get_slope_prior(N)
     slope_prior = rand(LogNormal(0.5, 1), N)
     return slope_prior
 end
+
+function get_divergenceRate(dt::String)
+    exp_id = getExpId_h5(dt)
+    n = length(exp_id)
+    goodness_fit = DataFrame(exp_id=exp_id, divergence=Array{Float64, 1}(undef, n))
+
+    for i in ProgressBar(1:n)
+        e = goodness_fit[i, :exp_id]
+        tmp = read("data/$dt"*"_julia_process_all/savedChains/$e.jls", Chains) |> DataFrame
+        goodness_fit[i, :divergence] = 1.0 - sum(tmp.is_accept) / nrow(tmp)
+    end
+
+    return goodness_fit
+end

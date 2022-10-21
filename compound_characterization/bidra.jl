@@ -7,7 +7,7 @@ include("../utils.jl")
 
 ### Batch variables
 println(ARGS)
-mod = parse(Int64, ARGS[1])
+mod_tot = parse(Int64, ARGS[1])
 batch = parse(Int64, ARGS[2])
 dataset = ARGS[3]
 
@@ -31,7 +31,7 @@ expId = getExpId_h5(dataset)
 
 ### Create batches and select one
 sort!(expId)
-subset_expId = [expId[i] for i in 1:length(expId) if i%mod == batch]
+subset_expId = [expId[i] for i in 1:length(expId) if i%mod_tot == batch]
 
 println("STARTING LOOP")
 ##### Subset 

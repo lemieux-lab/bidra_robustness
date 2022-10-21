@@ -127,12 +127,12 @@ function boxplots_dose_plot(withinDose_prob)
 end
 
 function get_posterior_diff(posterior_df, metrics_df)
+    eff_metrics = [:HDR, :LDR, :ic50, :slope]
     posteriorDiff_df = combine(groupby(posterior_df, :exp_id), 
                                     eff_metrics[1] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :HDR_postDiff,
                                     eff_metrics[2] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :LDR_postDiff,
                                     eff_metrics[3] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :ic50_postDiff,
-                                    eff_metrics[4] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :slope_postDiff,
-                                    eff_metrics[5] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :aac_postDiff)
+                                    eff_metrics[4] => (x -> percentile(x, 97.5) - percentile(x, 2.5)) => :slope_postDiff)
 
     metrics_df = innerjoin(metrics_df, posteriorDiff_df, on=:exp_id)
     return metrics_df

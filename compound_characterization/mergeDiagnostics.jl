@@ -9,7 +9,7 @@ diagnostic_data = DataFrame(exp_id=[], batch=[], time=[], HDR=[], LDR=[], ic50=[
 
 for i in 1:Nbatch
     batch = i-1
-    diagnosticTMP_fn = "../_generated_data/TMP_diagnostics"*string(batch)*".csv"
+    diagnosticTMP_fn = "../_generated_data/tmp/TMP_diagnostics"*string(batch)*".csv"
     
     tmp = readCSV(diagnosticTMP_fn, false)
     rename!(tmp, [:exp_id, :batch, :time, :HDR, :LDR, :ic50, :slope, :σ])
