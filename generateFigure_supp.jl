@@ -1,12 +1,24 @@
 using HypothesisTests
 using Gadfly
 using Cairo, Fontconfig
+using DataFrames, HDF5, JLD2
 
 include("utils.jl")
 include("plot_utils.jl")
 
 #### Correlation of experiments with multiple replicates
 figure_prefix = "_generated_figures/supp_fig/multiRep_corr/"
+
+## Numbers of exp./pairs
+data_prefix = "correlation_metrics/"
+for dt in ["gray", "gCSI", "ctrpv2"]
+    grouped_expID = load(joinpath(data_prefix, "rep_more2_pairing.jld2"))[dt]
+    expID_by_pairs = [length(g.pairs) for g in  groupby(grouped_expID, :pairs)]
+
+    tmp = countmap(expID_by_pairs)
+    p = Gadfly.plot(x = collect(keys(tmp)), y= collect(values(tmp)), Geom.bar(),)
+    draw(PDF(figure_prefix*"_$dt"*"_count_exp.pdf", 6inch, 4inch), p)
+end
 
 ## Sampling analysis
 multiRep_ml = readCSV("_generated_data/multiRep_mlCorrelations.csv", true)
@@ -94,7 +106,7 @@ for dt in ["gray", "gCSI", "ctrpv2"]
     metrics_df = innerjoin(metrics_df, tmp[:, [:exp_id, :rmsd, :convergence, :LDR, :HDR, :ic50, :slope]], on=:exp_id)
 
     ## ΔHDR, ΔIC50, ΔSlope
-    posterior = getPosterior_h5(dt, true, exp_id)
+    posterior = getPosterior_h5(dt, false, exp_id)
     metrics_df = get_posterior_diff(posterior, metrics_df)
 
     #### LM metrics
@@ -149,6 +161,14 @@ for dt in ["gray", "gCSI", "ctrpv2"]
         tmp = filter([:variable, :value] => (a, b) -> (a == String(pr) && metrics_bounds[pr][1] ≤ b ≤ metrics_bounds[pr][2]), tmp_stack)
         tmp_filter = vcat(tmp_filter, tmp)
     end
+
+    scaleColor = Scale.lab_gradient("gray95","black")
+    println(combine(groupby(tmp_filter, :variable), nrow))
+    p = Gadfly.plot(tmp_filter, x=:value, y=:sd_viab, xgroup=:variable, yintercept=[20],
+                    Geom.subplot_grid(Geom.hexbin(xbincount=80, ybincount=80), Geom.hline(), free_x_axis=true),
+                    Scale.color_continuous(colormap=scaleColor, minvalue=1));
+    draw(PDF(figure_prefix_trust*"$dt"*"_metrics_sd_viab_hexbin.pdf", 10inch, 4inch), p)
+
     p = Gadfly.plot(tmp_filter, x=:value, y=:sd_viab, xgroup=:variable, color=:convergence, yintercept=[20],
                     Geom.subplot_grid(Geom.point(), Geom.hline(), free_x_axis=true));
     draw(PDF(figure_prefix_trust*"$dt"*"_metrics_sd_viab.pdf", 10inch, 4inch), p)
@@ -159,7 +179,7 @@ for dt in ["gray", "gCSI", "ctrpv2"]
 
     #### Posterior metrics
     ## Comparing delta to SD-viab
-    scaleColor = Scale.lab_gradient("gray95","black")
+   
     tmp_sd = metrics_df[:, [:exp_id, :sd_viab, :convergence, :LDR_postDiff, :HDR_postDiff, :ic50_postDiff, :slope_postDiff]]
     tmp_stack = stack(tmp_sd, [:LDR_postDiff, :HDR_postDiff, :ic50_postDiff, :slope_postDiff])
     p = Gadfly.plot(tmp_stack, x=:value, y=:sd_viab, yintercept=[20], xgroup=:variable,
@@ -170,7 +190,16 @@ for dt in ["gray", "gCSI", "ctrpv2"]
     print(countmap(tmp_stack.variable))
     println()
 
-    p = Gadfly.plot(tmp_stack, x=:value, y=:sd_viab, yintercept=[20], color=:convergence, xgroup=:variable,
-                    Geom.subplot_grid(Geom.point(), Geom.hline, free_x_axis=true));
-    draw(PDF(figure_prefix_trust*"$dt"*"_Δmetrics_sd_viab_convergence.pdf", 10inch, 4inch), p)
+
+    tmp_posterior = innerjoin(posterior[:, [:exp_id, :LDR, :HDR, :ic50, :slope]], metrics_df[:, [:exp_id, :sd_viab]], on=:exp_id)
+    tmp_stack = stack(tmp_posterior, [:LDR, :HDR, :ic50, :slope])
+    p = Gadfly.plot(tmp_stack, x=:value, y=:sd_viab, yintercept=[20], xgroup=:variable,
+                    Geom.subplot_grid(Geom.hexbin(xbincount=80, ybincount=80), Geom.hline, free_x_axis=true),
+                    Scale.color_continuous(colormap=scaleColor, minvalue=1));
+    draw(PDF(figure_prefix_trust*"$dt"*"_posterior_metrics_sd_viab.pdf", 10inch, 4inch), p)
+
+
+    #p = Gadfly.plot(tmp_stack, x=:value, y=:sd_viab, yintercept=[20], color=:convergence, xgroup=:variable,
+    #                Geom.subplot_grid(Geom.point(), Geom.hline, free_x_axis=true));
+    #draw(PDF(figure_prefix_trust*"$dt"*"_Δmetrics_sd_viab_convergence.pdf", 10inch, 4inch), p)
 end

@@ -2,14 +2,14 @@ using DataFrames
 using Distributions, Statistics, StatsBase
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
-using Utils
+#using Utils
 
 include("utils.jl")
 include("plot_utils.jl")
 
 ###### Global Var ####
 figure_prefix = "_generated_figures/methods_comparison/"
-datasets = ["gray", "gCSI", "ctrpv2"]  
+datasets = ["gCSI"]#["gray", "gCSI", "ctrpv2"]  
 eff_metrics = [:HDR, :LDR, :ic50, :slope, :aac]
 metrics_bounds = Dict(:HDR=>[-50,150], :LDR=>[70,150], :ic50=>[-10,10], :slope=>[0,10], :aac=>[0,100])
 expIdSubset_list = ["NCI-H1648_AZ-628_8h", "Calu-1_PF-4708671_6b", "RERF-LC-MS_Gemcitabine_4b", "HCC78_Lapatinib_11a"]
@@ -32,7 +32,7 @@ for i in 1:length(datasets)
     @time expId_list = getExpId_h5(dt);
 
     print("--> StrIndex ")
-    @time si = Utils.StrIndex(expId_list);
+    @time si = StrIndex(expId_list);
 
     println("--> Raw data ")
     @time data_df = getRawData_h5(dt, false, si);
@@ -57,6 +57,7 @@ for i in 1:length(datasets)
 
         if dt == "gCSI"
             exp_subset_df = filter(:exp_id => x -> si.id2str[x] ∈ expIdSubset_list, metrics_df)
+            println(exp_subset_df)
             push!(p, layer(exp_subset_df, x=Symbol(String(em)*"_median"), y=em, Geom.point(), order=1))
         end
 

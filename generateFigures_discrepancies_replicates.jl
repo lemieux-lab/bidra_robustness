@@ -1,9 +1,9 @@
-push!(LOAD_PATH, "Utils/")
 using DataFrames
 using Distributions, Statistics, StatsBase
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
-using Utils
+
+include("utils.jl")
 
 ### Global Var
 figure_prefix = "_generated_figures/discrepancies_replicates/"
@@ -109,7 +109,7 @@ for i in 1:length(dataset)
     @time expId_list = getExpId_h5(dt);
 
     print("--> StrIndex ")
-    @time si = Utils.StrIndex(expId_list);
+    @time si = StrIndex(expId_list);
 
     println("--> Raw data ")
     @time data_df = getRawData_h5(dt, false, si);
