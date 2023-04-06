@@ -1,23 +1,22 @@
-push!(LOAD_PATH, "Utils/")
 using DataFrames
 using Statistics, StatsBase
 using Gadfly, StatsPlots
 using Cairo, Fontconfig
 using ProgressBars
-using Utils
+using JuBox
 
 include("utils.jl")
 fn = "_generated_figures/supp_fig/viab_corr/"
-scaleColor = Scale.lab_gradient("gray95","black")
+scaleColor = Scale.lab_gradient("gray95", "black")
 
 ### Define dataset to analyze
-dt = ARGS[1]
-#dt = "gray"
+#dt = ARGS[1]
+dt = "ctrpv2"
 
 ### Get data
 println("1. Get data")
 expId_list = getExpId_h5(dt);
-si = Utils.StrIndex(expId_list);
+si = StrIndex(expId_list);
 pairings_df = getPairings_h5(dt, si);
 pairings_df.pairID = collect(1:nrow(pairings_df));
 viability_df = getRawData_h5(dt, false, si);
@@ -49,9 +48,10 @@ if dt ∈ ["gCSI", "ctrpv2"]
 
     println("2. Plot viability rep. correlation")
     Gadfly.set_default_plot_size(3inch, 2inch)
-    local p_repViab = Gadfly.plot(pair_shared_dose, x=:Viability, y=:Viability_1,
+    p_repViab = Gadfly.plot(pair_shared_dose, x=:Viability, y=:Viability_1,
                  Geom.abline(style=:dash), Geom.hexbin(xbincount=80, ybincount=80),
-                 Scale.color_continuous(colormap=scaleColor, minvalue=1),
+                 #Scale.color_continuous(colormap=scaleColor, minvalue=1),
+                 Scale.color_log10(colormap=scaleColor, minvalue=1),
                  Coord.cartesian(xmin=-50, ymin=-50, xmax=200, ymax=200),
                  Theme(panel_stroke="black"),
                  Guide.title(dt));
@@ -75,7 +75,8 @@ else
             Gadfly.set_default_plot_size(3inch, 2inch)
             local p_repViab = Gadfly.plot(tmp, x=:Viability, y=:Viability_1,
                         Geom.abline(style=:dash), Geom.hexbin(xbincount=80, ybincount=80),
-                        Scale.color_continuous(colormap=scaleColor, minvalue=1),
+                        #Scale.color_continuous(colormap=scaleColor, minvalue=1),
+                        Scale.color_log10(colormap=scaleColor, minvalue=1),
                         Coord.cartesian(xmin=-50, ymin=-50, xmax=200, ymax=200),
                         Theme(panel_stroke="black"),
                         Guide.title(dt));
