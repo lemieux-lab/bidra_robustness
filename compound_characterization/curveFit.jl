@@ -25,7 +25,7 @@ for dt in ["gCSI", "gray", "ctrpv2"]
         bestFitParam = fit.param
         rmse = sqrt(sum(fit.resid .^ 2) / length(fit.resid))
         convergence = fit.converged
-        aac = computeAAC(xdata, ydata, bestFitParam)
+        aac = computeAAC(xdata, bestFitParam)
 
         tmp_df = DataFrame(LDR=bestFitParam[1], HDR=bestFitParam[2], ic50=bestFitParam[3],
                         slope=bestFitParam[4], aac=aac, exp_id=e, dataset=dt, rmse=rmse, convergence=convergence)

@@ -52,7 +52,7 @@ T = @elapsed for e in subset_expId
 
     aacPosterior = []
     for i in 1:nrow(toSave)
-        tmp = computeAAC(subset_df.Concentration, subset_df.Viability, toSave[i, [:LDR, :HDR, :ic50, :slope]])
+        tmp = computeAAC(subset_df.Concentration, toSave[i, [:LDR, :HDR, :ic50, :slope]])
         push!(aacPosterior, tmp)
     end
     toSave[!, :aac] = aacPosterior

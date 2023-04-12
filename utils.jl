@@ -384,27 +384,25 @@ end
 
 ###### Compute AAC ####
 ## param: LDR, HDR, IC50, slope
-function computeAAC(dose, viability, params)
+function computeAAC(dose, params)
+    LDR, HDR, ic50, slope = params
     a = minimum(dose)
     b = maximum(dose)
     
-    viability = viability ./ 100
-    params[1] = params[1] / 100
-    params[2] = params[2] / 100
+    LDR = LDR / 100
+    HDR = HDR / 100
 
-    if params[2] == 1 
+    if HDR == 1 
         aac = 0
-    elseif params[4] == 0 
-        aac = (params[1] - params[2]) / 2 
+    elseif slope == 0 
+        aac = (LDR - HDR) / 2 
     else 
         Δ = b - a
-        upDiv = 1 + 10 ^ (params[4] * (b - params[3]))
-        downDiv = 1 + 10 ^ (params[4] * (a - params[3]))
-        aac = ((params[1] - params[2]) / (params[4] * params[1] * Δ)) * log10(upDiv / downDiv)
+        aac = ((LDR - HDR) / (slope * LDR * Δ)) * log10((1 + 10^(slope*(b - ic50))) / (1 + 10^(slope*(a - ic50))))
     end
 
-    params[1] = params[1] * 100
-    params[2] = params[2] * 100
+    LDR = LDR * 100
+    HDR = HDR * 100
 
     return aac*100
 end

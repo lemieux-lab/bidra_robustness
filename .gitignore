@@ -12,6 +12,8 @@ compound_characterization/nohup.out
 ## Repo
 untracked_misc/
 data/
+data_backup/
+data_local/
 _generated_data/
 _generated_figures/
 
