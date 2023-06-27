@@ -436,9 +436,10 @@ function get_divergenceRate(dt::String)
 
     for i in ProgressBar(1:n)
         e = goodness_fit[i, :exp_id]
-        tmp = read("data/$dt"*"_julia_process_all/savedChains/$e.jls", Chains) |> DataFrame
+        tmp = DataFrame(open(deserialize, "data/$(dt)_julia_process_all/savedChains/$(e).jls"))
         goodness_fit[i, :divergence] = 1.0 - sum(tmp.is_accept) / nrow(tmp)
     end
 
     return goodness_fit
 end
+

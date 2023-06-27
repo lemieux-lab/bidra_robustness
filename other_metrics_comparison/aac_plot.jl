@@ -1,4 +1,5 @@
 using CairoMakie
+using DataFrames
 
 function plot_concentrationRangeOverview(pairings_df::DataFrame, ind_range::DataFrame)
     f = Figure(backgroundcolor="transparent", resolution = (1200, 800));
