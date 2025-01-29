@@ -7,7 +7,7 @@ using Cairo, Fontconfig
 include("utils.jl")
 
 ###### Global Var ####
-figure_prefix = "_generated_figures/supp_fig/models/"
+figure_prefix = "_generated_figures/models/"
 datasets= ["gCSI"]#["gray", "gCSI", "ctrpv2"]
 expId_list = mapreduce(dt -> getExpId_h5(dt), vcat, datasets);
 nId_list = map(dt -> length(getExpId_h5(dt)), datasets);

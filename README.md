@@ -29,6 +29,9 @@ Once all three datasets have been imported and converted to `H5`, LM estimates f
 ### Figures
 Figures are outputed in `_generated_figures` and illustrate results obtained from the compound characterization and the correlation analysis.
 
+## SAR Analysis
+The analysis of the IRIC dataset is stand-alone and is designed to be run within the `iric_dataset` directory.
+
 ## Arborescence
 
 ```
@@ -58,13 +61,3 @@ project
 |   └───curves_info
 |   └───drugAnnotations
 ```
-
-
-
-
-
-To get correlation metrics (slope of linear fit, r2, Spearman and Pearson correlation coefficients) of viability responses (shared concentration): `julia viabilityCorrelation.jl [nameOfDataset]`. Correlation metrics are calculated for 3 within-dose replicates representation: all possible pairing, mean responses, and bootstraping of pairing. For the later, the mean, median and std of correlation metrics are returned. If there are no within-concentration replicates, only the first representation is used. Results are added to a CSV file.
-
-To get correlation metrics (slope of linear fit, r2, Spearman and Pearson correlation coefficients) of metrics estimates (Marquardt-Levenberg): `julia MLcorrelation.jl [nameOfDataset]`. Results are added to a CSV file. 
-
-To get correlation metrics of posterior distributions (BiDRA): `julia posteriorCorrelation.jl [nameOfDataset]`. Correlation metrics are calculated for 4 posterior representations: median, three-percentiles, random sampling and quantile-to-quantile. Results are added to various CSV files.
