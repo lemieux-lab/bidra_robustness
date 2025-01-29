@@ -5,12 +5,13 @@ using Optim, GLM, LsqFit
 include("../utils.jl")
 
 ###### Global Var ####
-juliaMLe_fn = "../data/all_julia_curveFit.csv"
+juliaMLe_fn = "public_datasets/all_julia_curveFit.csv"
 @. model(x, p) = p[2] + ((p[1] - p[2]) / (1 + 10^(p[4] * (x - p[3]))))
 p₀ = [100.,0.,0.,1]
 
 ###### Data ##########
-for dt in ["gCSI", "gray", "ctrpv2"]
+for dt in ["gray"]#["gCSI", "gray", "ctrpv2"]
+    print(dt)
     data_df = getRawData_h5(dt, false)
     exp_id = getExpId_h5(dt)
 

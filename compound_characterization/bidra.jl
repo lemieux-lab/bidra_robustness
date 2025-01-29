@@ -13,18 +13,20 @@ dataset = ARGS[3]
 
 
 ### Global variables
-result_prefix = "../data/$dataset"*"_julia_process_all/"
-figure_prefix = "../data/$dataset"*"_julia_process_all/FIGURES/"
-diagnostic_fn = "../_generated_data/"*dataset*"_diagnostics.csv"
-diagnosticTMP_fn = "../_generated_data/TMP_diagnostics"*string(batch)*".csv"
-batchTiming_fn = "../_generated_data/batch_timing.csv"
+result_prefix = "public_datasets/bidra/"
+#figure_prefix = "public_datasets/bidra/FIGURES/"
+diagnostic_fn = "_generated_data/$dataset"*"_diagnostics.csv"
+diagnosticTMP_fn = "_generated_data/TMP_diagnostics"*string(batch)*".csv"
+batchTiming_fn = "_generated_data/batch_timing.csv"
+fn_h5 = "public_datasets/bidra/$dataset"*"_complete.h5"
 
 ### NUT-s parameters
 nChain = 4
 nIte = 1000
 nAdapt = 1000
 δ = 0.65
-#Turing.setadbackend(:reversediff)
+
+println(result_prefix)
 
 data_df = getRawData_h5(dataset, false)
 expId = getExpId_h5(dataset)
@@ -33,6 +35,7 @@ expId = getExpId_h5(dataset)
 sort!(expId)
 subset_expId = [expId[i] for i in 1:length(expId) if i%mod_tot == batch]
 
+print(length(subset_expId))
 println("STARTING LOOP")
 ##### Subset 
 T = @elapsed for e in subset_expId
@@ -57,10 +60,23 @@ T = @elapsed for e in subset_expId
     end
     toSave[!, :aac] = aacPosterior
 
-    CSV.write(result_prefix*e*".csv", toSave)
+    #CSV.write(result_prefix*e*".csv", toSave)
+    ### add to h5
+    
+    @time h5open(fn_h5, "r+") do file  
+        tmp = convert(Array{Float64}, Array(toSave))
+
+        g = file[e]
+        g["chains"] = tmp
+    
+        if "chains_colNames" ∉ keys(file["info"]) 
+            g = file["info"]
+            g["chains_colNames"] = names(toSave)
+        end
+    end
 
     ### save complete chain for further analysis
-    write(result_prefix*"savedChains/"*e*".jls", bidra_chains)
+    #write(result_prefix*"savedChains/"*e*".jls", bidra_chains)
 
     ### add to diagnostics
     println("UPDATE DIAGNOTICS")
@@ -71,33 +87,33 @@ T = @elapsed for e in subset_expId
     CSV.write(diagnosticTMP_fn, diagnostics, delim=",", append=true)
 
     ### generated figures
-    println("GENERATE FIGURE")
-    xDose = minimum(subset_df.Concentration)-1:0.1:maximum(subset_df.Concentration)+1
-    X = zeros(nrow(posterior_df),length(xDose))
+    #println("GENERATE FIGURE")
+    #xDose = minimum(subset_df.Concentration)-1:0.1:maximum(subset_df.Concentration)+1
+    #X = zeros(nrow(posterior_df),length(xDose))
 
-    curves_df = DataFrame()
-    for c in xDose 
-        curves_df[!,Symbol(c)] = [0.0]
-    end
+    #curves_df = DataFrame()
+    #for c in xDose 
+    #    curves_df[!,Symbol(c)] = [0.0]
+    #end
 
-    for i = 1:nrow(posterior_df)
-        tmp = posterior_df[i,[:LDR, :HDR, :ic50, :slope]]
-        f = llogistic(tmp)
-        y_tmp = f.(xDose)
+    #for i = 1:nrow(posterior_df)
+    #    tmp = posterior_df[i,[:LDR, :HDR, :ic50, :slope]]
+    #    f = llogistic(Array(tmp))
+    #    y_tmp = f.(xDose)
         
-        push!(curves_df, y_tmp)
-    end
+    #    push!(curves_df, y_tmp)
+    #end
 
-    med_curve = median.(eachcol(curves_df))
-    upper_curve = percentile.(eachcol(curves_df), 97.5)
-    lower_curve = percentile.(eachcol(curves_df), 2.5)
+    #med_curve = median.(eachcol(curves_df))
+    #upper_curve = percentile.(eachcol(curves_df), 97.5)
+    #lower_curve = percentile.(eachcol(curves_df), 2.5)
 
-    p = Gadfly.plot(layer(x=xDose, y=med_curve, Geom.line()),
-                    layer(subset_df, x=:Concentration, y=:Viability, Geom.point()),
-                    layer(x=xDose, ymin=lower_curve, ymax=upper_curve, Geom.ribbon()),
-                    Guide.title(e))
+    #p = Gadfly.plot(layer(x=xDose, y=med_curve, Geom.line()),
+    #                layer(subset_df, x=:Concentration, y=:Viability, Geom.point()),
+    #                layer(x=xDose, ymin=lower_curve, ymax=upper_curve, Geom.ribbon()),
+    #                Guide.title(e))
     #display(p)
-    draw(PDF(figure_prefix*e*".pdf", 4inch, 3inch), p)
+    #draw(PDF(figure_prefix*e*".pdf", 4inch, 3inch), p)
 
     #p = Gadfly.plot(posterior_df, x=:HDR, Geom.histogram())
     #display(p)

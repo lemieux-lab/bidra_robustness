@@ -1,12 +1,25 @@
 # BiDRA Robustness Demonstration
 Code for the evaluation of bidra robustness and application to discrepancies analysis.
 
-## Access data
+## Datasets
 Used datasets: Gray (public), gCSI (public), CTRPv2 (public) and IRIC (in-house).
 
 The data from the three public datasets are access through PharmacoGX, using the `output_[nameOfDataset]_curves.ipynb`. Additional relevant files are also downloaded. An anonymized version of the IRIC dataset is made available.
 
-## Do compounds characterization
+As a first step, the data `CSV` of the public datasets are converted to `H5` files with `public_data/csvToH5.jl`. Experiments are also filtered for extreme values, as describe in the manuscript.
+
+
+## Robustness and Discrepancies analysis
+Datasets used: Gray, gCSI and CTRPv2
+
+### Compounds characterization
+Posterior for each experiments are generated with `compound_characterization/bidra.jl`. The bash script `compound_characterization/partitionBiDRA.sh` allows to split a given dataset in N batch and run BiDRA simultaneously. Posterior are stored in the dataset `H5` files (`public_datasets/bidra/`). Batches' diagnostics files can me merged for a single dataset with `compound_characterization/mergeDiagnostics.jl`. The diagnostics and the batch timing statistics are stored in `_generated_data/`.
+
+Once all three datasets have been imported and converted to `H5`, LM estimates for each experiments can calculated with `compound_characterization/curveFit.jl`. Results are saved in a single file in `public_datasets/all_julia_curveFit.csv`.
+
+
+
+## Compounds characterization
 To predict estimates with standard Marquardt-Levenberg: `julia curveFit.jl`. The inference is for the experiments of all three experiments. The results are stored on the server.
 
 To infer posterior distribution with BiDRA: `./partionBiDRA.sh [nameOfDataset]`. Temporary diagnostics files are created for each batch. To merge them into one diagnotics file: `julia mergeDiagnostics.jl`. Posterior distributions, complete chains results and figures are stored on the server.

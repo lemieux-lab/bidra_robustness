@@ -11,22 +11,27 @@ compound_characterization/nohup.out
 
 ## Repo
 untracked_misc/
-data/curves_info/
-data/cellAnnotations/
-data/drugAnnotations/
+public_datasets/curves_info/*
+public_datasets/cellAnnotations/*
+public_datasets/drugAnnotations/*
+public_datasets/*_selected_curves_all.csv
+public_datasets/bidra/*
 _data_backup/
 _data_local/
 _data
-_generated_data/
+_generated_data/*
 _generated_figures/
 
 ## Data
 correlation_metrics/*_pairing.csv
 correlation_metrics/*.h5
 correlation_metrics/*.jld2
-data/*_selected_curves_all.csv
+
+all_julia_curveFit.csv
 
 ## Other code
 priors_test.jl
 MLcorrelation_by_drugs.jl
 posteriorCorrelation_by_drug.jl
+x.jls
+

@@ -35,16 +35,16 @@ function replaceChar(df::DataFrame, col::Symbol)
 end
 
 function getExpId_h5(dt::String)
-    fn_h5 = checkFile("data/$dt"*"_complete.h5")
+    fn_h5 = checkFile("public_datasets/bidra/$dt"*"_complete.h5")
     return h5read(fn_h5, "info")["exp_id"]
 end
 
 function getRawData_h5(dt::String, localVar::Bool)
     ### Define path
     if localVar
-        fn_h5 = checkFile("data/local_$dt"*"_complete.h5")
+        fn_h5 = checkFile("public_datasets/local_$dt"*"_complete.h5")
     else
-        fn_h5 = checkFile("data/$dt"*"_complete.h5")
+        fn_h5 = checkFile("public_datasets/bidra/$dt"*"_complete.h5")
     end
 
     ### Get list of expID
@@ -81,9 +81,9 @@ end
 function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
     ### Define path
     if localVar
-        fn_h5 = checkFile("data/local_$dt"*"_complete.h5")
+        fn_h5 = checkFile("public_datasets/local_$dt"*"_complete.h5")
     else
-        fn_h5 = checkFile("data/$dt"*"_complete.h5")
+        fn_h5 = checkFile("public_datasets/bidra/$dt"*"_complete.h5")
     end
 
     ### Get list of expID
@@ -120,9 +120,9 @@ end
 function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
     ### Define path
     if localVar 
-        fn_h5 = "data/local_$dt"*"_complete.h5"
+        fn_h5 = "public_datasets/local_$dt"*"_complete.h5"
     else
-        fn_h5 = "data/$dt"*"_complete.h5"
+        fn_h5 = "public_datasets/bidra/$dt"*"_complete.h5"
     end
 
     ### Import all posterior
@@ -158,9 +158,9 @@ end
 function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::Array)
     ### Define path
     if localVar 
-        fn_h5 = "data/local_$dt"*"_complete.h5"
+        fn_h5 = "public_datasets/local_$dt"*"_complete.h5"
     else
-        fn_h5 = "data/$dt"*"_complete.h5"
+        fn_h5 = "public_datasets/bidra/$dt"*"_complete.h5"
     end
 
     if eltype(pairing_df.rep_1) != String
@@ -199,9 +199,9 @@ end
 function getPosterior_h5(dt::String, localVar::Bool, expId_list::Array)
     ### Define path
     if localVar 
-        fn_h5 = "data/local_$dt"*"_complete.h5"
+        fn_h5 = "public_datasets/local_$dt"*"_complete.h5"
     else
-        fn_h5 = "data/$dt"*"_complete.h5"
+        fn_h5 = "public_datasets/bidra/$dt"*"_complete.h5"
     end
 
     ### Import all posterior
@@ -270,7 +270,7 @@ function getPairedPosterior_h5(pairings_df::DataFrame, si::StrIndex, pair::Array
 end
 
 function getMLestimates(dt::String, si::StrIndex)
-    mle_prefix = "data/all_julia_curveFit.csv"
+    mle_prefix = "public_datasets/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true)
 
     ## Only select estimate for datasets
@@ -280,7 +280,7 @@ function getMLestimates(dt::String, si::StrIndex)
 end
 
 function getMLestimates(si::StrIndex, expId_list::Array)
-    mle_prefix = "data/all_julia_curveFit.csv"
+    mle_prefix = "public_datasets/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true)
 
     ## Only select estimate for datasets
@@ -320,7 +320,7 @@ function getMLestimates(dt::String, si::StrIndex, pairing_df::DataFrame)
 end
 
 function getMLestimates(dt::String)
-    mle_prefix = "data/all_julia_curveFit.csv"
+    mle_prefix = "public_datasets/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true)
 
     ## Only select estimate for datasets
@@ -429,37 +429,31 @@ function get_slope_prior(N)
     return slope_prior
 end
 
-function get_divergenceRate(dt::String)
-    exp_id = getExpId_h5(dt)
-    n = length(exp_id)
-    goodness_fit = DataFrame(exp_id=exp_id, divergence=Array{Float64, 1}(undef, n))
+#function get_divergenceRate(dt::String)
+#    exp_id = getExpId_h5(dt)
+#    n = length(exp_id)
+#    goodness_fit = DataFrame(exp_id=exp_id, divergence=Array{Float64, 1}(undef, n))
 
-    for i in ProgressBar(1:n)
-        e = goodness_fit[i, :exp_id]
-        tmp = DataFrame(open(deserialize, "data/$(dt)_julia_process_all/savedChains/$(e).jls"))
-        goodness_fit[i, :divergence] = 1.0 - sum(tmp.numerical_error) / nrow(tmp)
-    end
+#    for i in ProgressBar(1:n)
+#        e = goodness_fit[i, :exp_id]
+#        tmp = DataFrame(open(deserialize, "public_datasets/$(dt)_julia_process_all/savedChains/$(e).jls"))
+#        goodness_fit[i, :divergence] = 1.0 - sum(tmp.numerical_error) / nrow(tmp)
+#    end
 
-    return goodness_fit
-end
+#    return goodness_fit
+#end
 
-function get_csrf(dt::String)
-    exp_id = getExpId_h5(dt)
-    n = length(exp_id)
-    csrf = DataFrame(exp_id=exp_id, val=Array{Float64, 1}(undef, n))
+#function get_csrf(dt::String)
+#    exp_id = getExpId_h5(dt)
+#    n = length(exp_id)
+#    csrf = DataFrame(exp_id=exp_id, val=Array{Float64, 1}(undef, n))
 
-    for i in ProgressBar(1:n)
-        e = csrf[i, :exp_id]
-        chn = deserialize("data/$(dt)_julia_process_all/savedChains/$(e).jls")
-        csrf[i, :val] = MCMCChains.gelmandiag_multivariate(chn)[2]
-    end
+#    for i in ProgressBar(1:n)
+#        e = csrf[i, :exp_id]
+#        chn = deserialize("public_datasets/$(dt)_julia_process_all/savedChains/$(e).jls")
+#        csrf[i, :val] = MCMCChains.gelmandiag_multivariate(chn)[2]
+#    end
 
-    return csrf
-end
-
-#θ_overall =  combine(tmp, :HDR => mean, :LDR => mean, :ic50 => mean, :slope => mean, :σ => mean)
-#θ_chains =  combine(groupby(tmp, :chain), :HDR => mean, :LDR => mean, :ic50 => mean, :slope => mean, :σ => mean)
-
-#θ_diff = sum.(map(r -> (Array(θ_overall[1, 1:end]) - Array(r)) .^ 2, eachrow(θ_chains[:,2:end])))
-#B = (4000 / (4-1)) * θ_diff
+#    return csrf
+#end
 
