@@ -18,6 +18,29 @@ Posterior for each experiments are generated with `compound_characterization/bid
 Once all three datasets have been imported and converted to `H5`, LM estimates for each experiments can calculated with `compound_characterization/curveFit.jl`. Results are saved in a single file in `public_datasets/all_julia_curveFit.csv`.
 
 
+## Arborescence
+
+```
+project
+│   README.md
+│   Manifest.toml    
+│   Project.toml
+|
+└───_generated_data
+|
+└───public_datasets
+|   |   csvToH5.jl
+|   |   output_ctrpv2_curves.ipynb
+|   |   output_gCSI_curves.ipynb
+|   |   output_gray_curves.ipynb
+|   |
+|   └───bidra
+|   └───cellAnnotations
+|   └───curves_info
+|   └───drugAnnotations
+```
+
+
 
 ## Compounds characterization
 To predict estimates with standard Marquardt-Levenberg: `julia curveFit.jl`. The inference is for the experiments of all three experiments. The results are stored on the server.
