@@ -1,6 +1,6 @@
 using DataFrames
 using Statistics, StatsBase
-using Gadfly, StatsPlots
+using Gadfly, StatsPlots, CairoMakie
 using Cairo, Fontconfig
 using ProgressBars
 using JuBox
@@ -15,11 +15,20 @@ dt = "ctrpv2"
 
 ### Get data
 println("1. Get data")
-expId_list = getExpId_h5(dt);
+expId_list = getExpId_h5(dt)
 si = StrIndex(expId_list);
 pairings_df = getPairings_h5(dt, si);
 pairings_df.pairID = collect(1:nrow(pairings_df));
 viability_df = getRawData_h5(dt, false, si);
+
+dose_response_counts = combine(groupby(viability_df, :exp_id), :Concentration => length∘unique => :N_unique, :Viability => length => :N)
+dose_response_counts[:, :Δ] = dose_response_counts.N ./ dose_response_counts.N_unique
+occ_df = combine(groupby(dose_response_counts, :Δ), :Δ => length => :count)
+
+fig = CairoMakie.Figure()
+ax = CairoMakie.Axis(fig[1, 1])
+CairoMakie.barplot!(ax, occ_df.Δ, occ_df.count)
+display(fig)
 
 println("2. Pair experiments responses")
 rep1 = innerjoin(pairings_df[:, [:rep_1, :pairID]], viability_df, on=:rep_1=>:exp_id)

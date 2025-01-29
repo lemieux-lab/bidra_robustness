@@ -437,9 +437,29 @@ function get_divergenceRate(dt::String)
     for i in ProgressBar(1:n)
         e = goodness_fit[i, :exp_id]
         tmp = DataFrame(open(deserialize, "data/$(dt)_julia_process_all/savedChains/$(e).jls"))
-        goodness_fit[i, :divergence] = 1.0 - sum(tmp.is_accept) / nrow(tmp)
+        goodness_fit[i, :divergence] = 1.0 - sum(tmp.numerical_error) / nrow(tmp)
     end
 
     return goodness_fit
 end
+
+function get_csrf(dt::String)
+    exp_id = getExpId_h5(dt)
+    n = length(exp_id)
+    csrf = DataFrame(exp_id=exp_id, val=Array{Float64, 1}(undef, n))
+
+    for i in ProgressBar(1:n)
+        e = csrf[i, :exp_id]
+        chn = deserialize("data/$(dt)_julia_process_all/savedChains/$(e).jls")
+        csrf[i, :val] = MCMCChains.gelmandiag_multivariate(chn)[2]
+    end
+
+    return csrf
+end
+
+#θ_overall =  combine(tmp, :HDR => mean, :LDR => mean, :ic50 => mean, :slope => mean, :σ => mean)
+#θ_chains =  combine(groupby(tmp, :chain), :HDR => mean, :LDR => mean, :ic50 => mean, :slope => mean, :σ => mean)
+
+#θ_diff = sum.(map(r -> (Array(θ_overall[1, 1:end]) - Array(r)) .^ 2, eachrow(θ_chains[:,2:end])))
+#B = (4000 / (4-1)) * θ_diff
 

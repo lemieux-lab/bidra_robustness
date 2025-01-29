@@ -1,5 +1,10 @@
 # BiDRA Robustness Demonstration
-Code for the evaluation of bidra robustness and application to discrepancies analysis. We are using three large scale datasets (gCSI, CTRPv2 and GRAY) that are stored on lab servers.
+Code for the evaluation of bidra robustness and application to discrepancies analysis.
+
+## Access data
+Used datasets: Gray (public), gCSI (public), CTRPv2 (public) and IRIC (in-house).
+
+The data from the three public datasets are access through PharmacoGX, using the `output_[nameOfDataset]_curves.ipynb`. Additional relevant files are also downloaded. An anonymized version of the IRIC dataset is made available.
 
 ## Do compounds characterization
 To predict estimates with standard Marquardt-Levenberg: `julia curveFit.jl`. The inference is for the experiments of all three experiments. The results are stored on the server.

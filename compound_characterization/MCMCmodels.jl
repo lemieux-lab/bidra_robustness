@@ -1,4 +1,4 @@
-using Turing, MCMCChains, ReverseDiff
+using Turing, MCMCChains
 using Distributions
 using FillArrays
 
