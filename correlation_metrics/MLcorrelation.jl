@@ -7,17 +7,17 @@ include("../utils.jl")
 
 ### Define dataset to analyze
 dt = ARGS[1]
-#dt = "gCSI"
-#dt = "gray"
-#dt = "ctrpv2"
+overwrite = parse(Bool, ARGS[2])
 
-pairings_df = getPairings_h5(dt)
-mlPaired_df = getMLestimates([dt], pairings_df)
+@time expId_list = getExpId_h5(dt);
+@time si = StrIndex(expId_list);
+pairings_df = getPairings_h5(dt, si)
+mlPaired_df = getMLestimates(si, pairings_df)
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 ### replace Inf aac by Nan
-mlPaired_df[!, :aac_rep1] = replace(mlPaired_df.aac_rep_1, Inf => NaN, -Inf => NaN)
-mlPaired_df[!, :aac_rep2] = replace(mlPaired_df.aac_rep_2, Inf => NaN, -Inf => NaN)
+mlPaired_df[!, :aac_rep1] = replace(mlPaired_df.aac_rep1, Inf => NaN, -Inf => NaN)
+mlPaired_df[!, :aac_rep2] = replace(mlPaired_df.aac_rep2, Inf => NaN, -Inf => NaN)
 
 function doCorrelation(df::DataFrame, description::String)
     results_prefix = "_generated_data/"
@@ -35,7 +35,11 @@ function doCorrelation(df::DataFrame, description::String)
         mlCorr_df[:, :param] = [pr]
         mlCorr_df[:, :description] = [description]
 
-        CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=true)
+        if overwrite
+            CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","description"])
+        else
+            CSV.write(results_prefix*"mlCorrelations.csv", mlCorr_df, delim=",", append=true)
+        end
     end
 end
 

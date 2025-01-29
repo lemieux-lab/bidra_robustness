@@ -2,9 +2,9 @@ using DataFrames, HDF5, JLD2
 
 include("../utils.jl")
 
-datasets = ["gCSI", "ctrpv2", "gray"]
-info_prefix = "data/curves_info/"
-output_prefix = "correlation_metrics/"
+datasets = ["gray"]#["gCSI", "ctrpv2", "gray"]
+info_prefix = "public_datasets/curves_info/"
+output_prefix = "public_datasets/"
 
 ### Helpful functions
 ### Remove characters in exp_id name
@@ -57,10 +57,11 @@ for i in 1:length(datasets)
     ## Get viabilities and info 
     data_df = getRawData_h5(dt, false)
     info_df = readCSV(info_prefix*dt*"_info.csv", true)[:, 1:3]
-    info_df = replaceChar(info_df, :experimentIds)
+    print(names(info_df))
+    info_df = replaceChar(info_df, :exp_id)
 
     ## Create meta df and print info
-    meta_df = innerjoin(data_df, info_df, on=[:exp_id => :experimentIds])
+    meta_df = innerjoin(data_df, info_df, on=[:exp_id => :exp_id])
     meta_df[!, "pairs"] = string.(meta_df.drugid, ":", meta_df.cellid)
     println("Dataset info")
     println(dt, ": ", length(unique(meta_df.cellid)), " cell lines, ", length(unique(meta_df.drugid)), " drugs, ", length(unique(meta_df.pairs)), " pairs")

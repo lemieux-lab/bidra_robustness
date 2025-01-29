@@ -163,7 +163,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::A
         fn_h5 = "public_datasets/bidra/$dt"*"_complete.h5"
     end
 
-    if eltype(pairing_df.rep_1) != String
+    if eltype(expId_list) != String
         expId_list = [si.id2str[e] for e in expId_list]
     end
 
@@ -239,7 +239,7 @@ function llogistic(param::Array)
 end
 
 function getPairings_h5(dt::String, si::StrIndex)
-    fn = checkFile("correlation_metrics/rep2_pairing.h5")
+    fn = checkFile("public_datasets/rep2_pairing.h5")
     df = DataFrame(h5read(fn, dt))
 
     df[!,:rep_1] = [si.str2id[v] for v in df[!,:rep_1]]
@@ -247,13 +247,13 @@ function getPairings_h5(dt::String, si::StrIndex)
     return df
 end
 
-function getPairedPosterior_h5(dt::String)
-    pairings_df = getPairings_h5(dt)
+function getPairedPosterior_h5(dt::String, si::StrIndex)
+    pairings_df = getPairings_h5(dt, si)
 
-    posterior_rep1 = getPosterior_h5(dt, false, Array(pairings_df.rep_1))
+    posterior_rep1 = getPosterior_h5(dt, false, si, Array(pairings_df.rep_1))
     rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
 
-    posterior_rep2 = getPosterior_h5(dt, false, Array(pairings_df.rep_2))
+    posterior_rep2 = getPosterior_h5(dt, false, si, Array(pairings_df.rep_2))
     rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
 
     return hcat(posterior_rep1, posterior_rep2)

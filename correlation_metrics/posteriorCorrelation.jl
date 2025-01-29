@@ -5,12 +5,13 @@ include("../utils.jl")
 
 ### Define dataset to analyze
 dt = ARGS[1]
-#dt = "gCSI"
-#dt = "gray"
-#dt = "ctrpv2"
+overwrite = parse(Bool, ARGS[2])
+println(overwrite)
 
-pairings_df = getPairings_h5(dt)
-posteriorPaired_df = getPairedPosterior_h5(dt)
+@time expId_list = getExpId_h5(dt);
+@time si = StrIndex(expId_list);
+pairings_df = getPairings_h5(dt, si)
+posteriorPaired_df = getPairedPosterior_h5(dt, si)
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 function doCorrelation(df::DataFrame, description::String)
@@ -28,7 +29,11 @@ function doCorrelation(df::DataFrame, description::String)
         medianCorr_df[:, :param] = [pr]
         medianCorr_df[:, :description] = [description]
         
-        CSV.write(results_prefix*"medianCorrelations.csv", medianCorr_df, delim=",", append=true)
+        if overwrite 
+            CSV.write(results_prefix*"medianCorrelations.csv", medianCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","description"])
+        else 
+            CSV.write(results_prefix*"medianCorrelations.csv", medianCorr_df, delim=",", append=true)
+        end
     
         ### Posterior correlation
         posteriorCorr_df = correlationAnalysis(df[:, pr_rep1], df[:, pr_rep2])
@@ -36,9 +41,12 @@ function doCorrelation(df::DataFrame, description::String)
         posteriorCorr_df[:, :dataset] = [dt]
         posteriorCorr_df[:, :param] = [pr]
         posteriorCorr_df[:, :description] = [description]
-    
-        CSV.write(results_prefix*"posteriorCorrelations.csv", posteriorCorr_df, delim=",", append=true)
-    
+        
+        if overwrite 
+            CSV.write(results_prefix*"posteriorCorrelations.csv", posteriorCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","description"])
+        else 
+            CSV.write(results_prefix*"posteriorCorrelations.csv", posteriorCorr_df, delim=",", append=true)
+        end
     
         ### CI posterior correlation
         quantilesCI = [2.5, 50.0, 97.5]
@@ -61,13 +69,19 @@ function doCorrelation(df::DataFrame, description::String)
         qqCorr_df[:, :param] = [pr]
         qqCorr_df[:, :description] = [description]
     
-        CSV.write(results_prefix*"qqCorrelations.csv", qqCorr_df, delim=",", append=true)
+        
+        if overwrite 
+            CSV.write(results_prefix*"qqCorrelations.csv", qqCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","description"])
+        else 
+            CSV.write(results_prefix*"qqCorrelations.csv", qqCorr_df, delim=",", append=true)
+        end
+        
     end
 end
 
 function createPosteriorDf(dt::String, pairings::DataFrame)
-    posterior_rep1 = getPosterior_h5(dt, false, Array(pairings.rep_1))
-    posterior_rep2 = getPosterior_h5(dt, false, Array(pairings.rep_2))
+    posterior_rep1 = getPosterior_h5(dt, false, si, Array(pairings.rep_1))
+    posterior_rep2 = getPosterior_h5(dt, false, si, Array(pairings.rep_2))
 
     rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
     rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
@@ -82,7 +96,7 @@ println("Correlation for all pairs")
 
 println()
 println("Get data, SD, and group")
-data_df = getRawData_h5(dt, false)
+data_df = getRawData_h5(dt, false, si)
 sd_df = combine(groupby(data_df, :exp_id), :Viability => std => :std_viability)
 expId_complete = sd_df[sd_df.std_viability .>= 20, :exp_id]
 expId_incomplete = sd_df[sd_df.std_viability .< 20, :exp_id]

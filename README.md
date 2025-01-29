@@ -17,6 +17,12 @@ Posterior for each experiments are generated with `compound_characterization/bid
 
 Once all three datasets have been imported and converted to `H5`, LM estimates for each experiments can calculated with `compound_characterization/curveFit.jl`. Results are saved in a single file in `public_datasets/all_julia_curveFit.csv`.
 
+### Correlation analysis
+1. Pairings of duplicated experiments are obtained with `correlation_metrics/generatesPairings.jl`. This code also produce a list of of pairings for more than two replicated experiments. Results are saved in `public_datasets/`.
+
+2. Response consistency across biological replicates is assessed through calculation of correlation metrics for viability responses. Values are obtained with `correlation_metrics/viabilityCorrelation.jl` and saved in `_generated_data/viabCorrelations.csv`.
+
+3. Efficiency metrics correlation is calculated with `correlation_metrics/posteriorCorrelation.jl` and `correlation_metrics/LMcorrelation.jl`. The results are respectively saved in `_generated_data/posteriorCorrelations.csv`, `_generated_data/medianCorrelations.csv` and `_generated_data/qqCorrelations.csv`, and in `_generated_data/mlCorrelations.csv`.
 
 ## Arborescence
 
@@ -27,6 +33,7 @@ project
 │   Project.toml
 |
 └───_generated_data
+|   └───tmp
 |
 └───public_datasets
 |   |   csvToH5.jl
@@ -42,14 +49,7 @@ project
 
 
 
-## Compounds characterization
-To predict estimates with standard Marquardt-Levenberg: `julia curveFit.jl`. The inference is for the experiments of all three experiments. The results are stored on the server.
 
-To infer posterior distribution with BiDRA: `./partionBiDRA.sh [nameOfDataset]`. Temporary diagnostics files are created for each batch. To merge them into one diagnotics file: `julia mergeDiagnostics.jl`. Posterior distributions, complete chains results and figures are stored on the server.
-
-
-## Do correlation analysis
-Pairings of duplicated experiments are listed in `[nameOfDataset]_rep2_pairing.csv` files. To get those lists: `julia generatesPairings.jl [nameOfDataset]`.
 
 To get correlation metrics (slope of linear fit, r2, Spearman and Pearson correlation coefficients) of viability responses (shared concentration): `julia viabilityCorrelation.jl [nameOfDataset]`. Correlation metrics are calculated for 3 within-dose replicates representation: all possible pairing, mean responses, and bootstraping of pairing. For the later, the mean, median and std of correlation metrics are returned. If there are no within-concentration replicates, only the first representation is used. Results are added to a CSV file.
 

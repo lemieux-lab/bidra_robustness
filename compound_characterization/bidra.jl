@@ -16,7 +16,7 @@ dataset = ARGS[3]
 result_prefix = "public_datasets/bidra/"
 #figure_prefix = "public_datasets/bidra/FIGURES/"
 diagnostic_fn = "_generated_data/$dataset"*"_diagnostics.csv"
-diagnosticTMP_fn = "_generated_data/TMP_diagnostics"*string(batch)*".csv"
+diagnosticTMP_fn = "_generated_data/tmp/TMP_diagnostics"*string(batch)*".csv"
 batchTiming_fn = "_generated_data/batch_timing.csv"
 fn_h5 = "public_datasets/bidra/$dataset"*"_complete.h5"
 
