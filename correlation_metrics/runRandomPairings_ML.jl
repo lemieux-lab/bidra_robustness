@@ -8,7 +8,7 @@ results_prefix = "_generated_data/"
 datasets = ["gray", "gCSI", "ctrpv2"]
 bidra_params = ["LDR", "HDR", "ic50", "slope"]
 
-function randomPairings(dt::String, n::Int64, expID_list::Array, rep::Int64, description::String)
+function randomPairings(dt::String, n::Int64, expID_list::Array, rep::Int64, description::String, addHeader::Bool)
     println("------  Generate random exp_id list")
     rdn_sort = sample(1:n, n, replace = false)
     exp_id_rdm = expID_list[rdn_sort]
@@ -23,7 +23,11 @@ function randomPairings(dt::String, n::Int64, expID_list::Array, rep::Int64, des
         mlCorr_df[:, :rep] = [rep]
         mlCorr_df[:, :description] = [description]
         
-        CSV.write(results_prefix*"mlRandomCorrelations.csv", mlCorr_df, delim=",", append=true)
+        if addHeader
+            CSV.write(results_prefix*"mlRandomCorrelations.csv", mlCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","rep","method","description"])
+        else
+            CSV.write(results_prefix*"mlRandomCorrelations.csv", mlCorr_df, delim=",", append=true)
+        end
     end
 end
 
@@ -32,8 +36,8 @@ function getExpIdList(pairings::DataFrame)
 end
 
 
-for i in 1:length(datasets)
-    dt = datasets[i]
+dt_count = 1
+for dt in datasets
     println("### $dt")
 
     println("Get data")
@@ -43,7 +47,7 @@ for i in 1:length(datasets)
     expId_incomplete = sd_df[sd_df.std_viability .< 20, :exp_id]
 
     println("Get pairings")
-    pairings_df = getPairings_h5(dt)
+    pairings_df = getPairings_h5(dt, si)
     pairingComplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_complete && y ∈ expId_complete, pairings_df)
     pairingIncomplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete && y ∈ expId_incomplete, pairings_df)
     pairingMixte_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete || y ∈ expId_incomplete, pairings_df)
@@ -64,14 +68,22 @@ for i in 1:length(datasets)
     for i in 1:100
         println("Replicated sampling #", i)
         println("--- All pairs")  
-        randomPairings(dt, N[1], expId_list_all, i, "all pairs")
+
+        if dt_count + i == 1
+            randomPairings(dt, N[1], expId_list_all, i, "all pairs", true)
+        else
+            randomPairings(dt, N[1], expId_list_all, i, "all pairs", false)
+        end
+
         println("--- Complete pairs")
-        randomPairings(dt, N[2], expId_list_complete, i, "complete pairs")
+        randomPairings(dt, N[2], expId_list_complete, i, "complete pairs", false)
         println("--- Incomplete pairs")
-        randomPairings(dt, N[3], expId_list_incomplete, i, "incomplete pairs")
+        randomPairings(dt, N[3], expId_list_incomplete, i, "incomplete pairs", false)
         println("--- Mixte pairs")
-        randomPairings(dt, N[4], expId_list_mixte, i, "mixte pairs")
+        randomPairings(dt, N[4], expId_list_mixte, i, "mixte pairs", false)
         println("--- Converge pairs")
-        randomPairings(dt, N[5], expId_list_converge, i, "converge pairs")
+        randomPairings(dt, N[5], expId_list_converge, i, "converge pairs", false)
     end
+
+    dt_count += 1
 end

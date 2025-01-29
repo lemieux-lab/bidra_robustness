@@ -5,10 +5,10 @@ include("../utils.jl")
 
 ### Gloab variables
 results_prefix = "_generated_data/"
-datasets = ["gray", "gCSI", "ctrpv2"]
+datasets = ["gray"]#["gray", "gCSI", "ctrpv2"]
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
-function randomPairings(dt::String, n::Int64, expId_list::Array, rep::Int64, description::String)
+function randomPairings(dt::String, n::Int64, expId_list::Array, rep::Int64, description::String, addHeader::Bool)
     println("------  Generate random exp_id list")
     rdn_sort = sample(1:n, n, replace = false)
     exp_id_rdm = expId_list[rdn_sort]
@@ -30,8 +30,13 @@ function randomPairings(dt::String, n::Int64, expId_list::Array, rep::Int64, des
         posteriorCorr_df[:, :rep] = [rep]
         posteriorCorr_df[:, :method] = ["posterior"]
         posteriorCorr_df[:, :description] = [description]
-        CSV.write(results_prefix*"bidraRandomCorrelation.csv", posteriorCorr_df, delim=",", append=true)
-            
+
+        if addHeader 
+            CSV.write(results_prefix*"bidraRandomCorrelation.csv", posteriorCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","rep","method","description"])
+        else
+            CSV.write(results_prefix*"bidraRandomCorrelation.csv", posteriorCorr_df, delim=",", append=true)
+        end
+
         prQQ = combine(groupby(df_random_paired, :exp_id_rep1), Symbol("$pr"*"_rep1") => sort => :sorted_1, Symbol("$pr"*"_rep2") => sort => :sorted_2)
         qqCorr_df = correlationAnalysis(prQQ.sorted_1, prQQ.sorted_2)
         qqCorr_df[:, :N] = [n]
@@ -48,18 +53,20 @@ function getExpIdList(pairings::DataFrame)
     return vcat(pairings.rep_1, pairings.rep_2)
 end
 
-for i in 1:length(datasets)
-    dt = datasets[i]
+dt_count = 1
+for dt in datasets
     println("### $dt")
 
     println("Get data")
-    data_df = getRawData_h5(dt, false)
+    @time expId_list = getExpId_h5(dt);
+    @time si = StrIndex(expId_list);
+    data_df = getRawData_h5(dt, false, si)
     sd_df = combine(groupby(data_df, :exp_id), :Viability => std => :std_viability)
     expId_complete = sd_df[sd_df.std_viability .>= 20, :exp_id]
     expId_incomplete = sd_df[sd_df.std_viability .< 20, :exp_id]
 
     println("Get pairings")
-    pairings_df = getPairings_h5(dt)
+    pairings_df = getPairings_h5(dt, si)
     pairingComplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_complete && y ∈ expId_complete, pairings_df)
     pairingIncomplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete && y ∈ expId_incomplete, pairings_df)
     pairingMixte_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete || y ∈ expId_incomplete, pairings_df)
@@ -75,14 +82,21 @@ for i in 1:length(datasets)
     ### Radomly paired correlation analysis for all pairs
     for i in 1:100
         println("Replicated sampling #", i)
-        println("--- All pairs")  
-        randomPairings(dt, N[1], expId_list_all, i, "all pairs")
+        println("--- All pairs")
+
+        if dt_count + i == 1 
+            randomPairings(dt, N[1], expId_list_all, i, "all pairs", true)
+        else
+            randomPairings(dt, N[1], expId_list_all, i, "all pairs", false)
+        end
 
         println("--- Complete pairs")
-        randomPairings(dt, N[2], expId_list_complete, i, "complete pairs")
+        randomPairings(dt, N[2], expId_list_complete, i, "complete pairs", false)
         println("--- Incomplete pairs")
-        randomPairings(dt, N[3], expId_list_incomplete, i, "incomplete pairs")
+        randomPairings(dt, N[3], expId_list_incomplete, i, "incomplete pairs", false)
         println("--- Mixtes pairs")
-        randomPairings(dt, N[4], expId_list_mixte, i, "mixte pairs")
+        randomPairings(dt, N[4], expId_list_mixte, i, "mixte pairs", false)
     end
+
+    dt_count += 1
 end
