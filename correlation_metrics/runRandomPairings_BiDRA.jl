@@ -5,7 +5,7 @@ include("../utils.jl")
 
 ### Gloab variables
 results_prefix = "_generated_data/"
-datasets = ["gray"]#["gray", "gCSI", "ctrpv2"]
+datasets = ["gray", "gCSI", "ctrpv2"]
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 function randomPairings(dt::String, n::Int64, expId_list::Array, rep::Int64, description::String, addHeader::Bool)

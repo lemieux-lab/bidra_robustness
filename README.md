@@ -24,6 +24,11 @@ Once all three datasets have been imported and converted to `H5`, LM estimates f
 
 3. Efficiency metrics correlation is calculated with `correlation_metrics/posteriorCorrelation.jl` and `correlation_metrics/LMcorrelation.jl`. The results are respectively saved in `_generated_data/posteriorCorrelations.csv`, `_generated_data/medianCorrelations.csv` and `_generated_data/qqCorrelations.csv`, and in `_generated_data/mlCorrelations.csv`.
 
+3. Correlations between randomly paired experiments are calculated with `correlation_metrics/runRandomPairings_BiDRA.jl` and `correlation_metrics/runRandomPairings_ML.jl`. The results are respectively saved in `_generated_data/bidraRandomCorrelation.csv` and in `_generated_data/mlRandomCorrelations.csv`.
+
+### Figures
+Figures are outputed in `_generated_figures` and illustrate results obtained from the compound characterization and the correlation analysis.
+
 ## Arborescence
 
 ```
@@ -34,6 +39,13 @@ project
 |
 └───_generated_data
 |   └───tmp
+|
+└───_generated_data
+|   └───discrepancies_replicates
+|   └───methods_comparison
+|   └───models
+|   └───robustness
+|   └───viab_corr
 |
 └───public_datasets
 |   |   csvToH5.jl
