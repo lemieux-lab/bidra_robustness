@@ -2,7 +2,9 @@ using DataFrames, HDF5, JLD2
 include("../utils.jl")
 
 dt = ARGS[1]
-data_prefix = "correlation_metrics/"
+overwrite = parse(Bool, ARGS[2])
+
+data_prefix = "public_datasets/"
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 function doCorrelation(df::DataFrame, rep::Int)
@@ -20,8 +22,6 @@ function doCorrelation(df::DataFrame, rep::Int)
         medianCorr_df[:, :param] = [pr]
         medianCorr_df[:, :rep] = [rep]
         
-        CSV.write(results_prefix*"multiRep_medianCorrelations.csv", medianCorr_df, delim=",", append=true)
-
         ### QQ posterior correlation
         prQQ = combine(groupby(df, :exp_id_rep1), pr_rep1 => sort => :sorted_1, pr_rep2 => sort => :sorted_2)
         
@@ -31,7 +31,13 @@ function doCorrelation(df::DataFrame, rep::Int)
         qqCorr_df[:, :param] = [pr]
         qqCorr_df[:, :rep] = [rep]
 
-        CSV.write(results_prefix*"multiRep_qqCorrelations.csv", qqCorr_df, delim=",", append=true)
+        if rep == 1 && overwrite
+            CSV.write(results_prefix*"multiRep_medianCorrelations.csv", medianCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","rep"])
+            CSV.write(results_prefix*"multiRep_qqCorrelations.csv", qqCorr_df, delim=",", appen=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","rep"])
+        else
+            CSV.write(results_prefix*"multiRep_medianCorrelations.csv", medianCorr_df, delim=",", append=true)
+            CSV.write(results_prefix*"multiRep_qqCorrelations.csv", qqCorr_df, delim=",", append=true)
+        end
     end
 end
 

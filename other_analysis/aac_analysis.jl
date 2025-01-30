@@ -2,10 +2,10 @@ using JuBox
 include("../utils.jl")
 include("aac_plot.jl")
 
-figure_prefix = "/u/labellec/Desktop/bayesian_dose_response/bidra_robustness/_generated_figures/supp_fig/aac_analysis/"
+figure_prefix = "_generated_figures/supp_fig/aac_analysis/"
 
 ### Estimates and infer AAC for common range for pairs of biological replicates
-dt = "ctrpv2"
+dt = "gray"
 expId_list = getExpId_h5(dt)
 si = StrIndex(expId_list)
 data_df = getRawData_h5(dt, false, si)

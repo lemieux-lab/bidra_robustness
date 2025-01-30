@@ -12,11 +12,11 @@ function plot_concentrationRangeOverview(pairings_df::DataFrame, ind_range::Data
     rep1_val = filter(:exp_id => x -> x ∈ pairings_df.rep_1, ind_range)
     rep2_val = filter(:exp_id => x -> x ∈ pairings_df.rep_2, ind_range)
 
-    hb_min = hexbin!(axMin, rep1_val.min, rep2_val.min, cellsize=0.1, threshold=1, colormap=["gray95", "gray35", "black"])
+    hb_min = CairoMakie.hexbin!(axMin, rep1_val.min, rep2_val.min, cellsize=0.1, threshold=1, colormap=["gray95", "gray35", "black"])
     ablines!(axMin, [0], [1])
     Colorbar(f[2, 1], hb_min, vertical=false, label="Pairs Count")
 
-    hb_max = hexbin!(axMax, rep1_val.max, rep2_val.max, cellsize=0.1, threshold=1, colormap=["gray95", "gray35", "black"])
+    hb_max = CairoMakie.hexbin!(axMax, rep1_val.max, rep2_val.max, cellsize=0.1, threshold=1, colormap=["gray95", "gray35", "black"])
     ablines!(axMax, [0], [1])
     Colorbar(f[2, 2], hb_max, vertical=false, label="Pairs Count")
 
@@ -74,7 +74,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     mlCorr_all = correlationAnalysis(paired_ml[:,:aacRC_1], paired_ml[:,:aacRC_2])
     
     ax1 = Axis(f[1, 1], title="Levenberg_Marquardt\nAll pairs(n=$(nrow(paired_ml)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax1, paired_ml.aacRC_1, paired_ml.aacRC_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax1, paired_ml.aacRC_1, paired_ml.aacRC_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax1, [0], [1])
     text!(ax1, posX, posY, text="rₛ=$(mlCorr_all[1, :rₛ])\nr=$(mlCorr_all[1, :r])", align=alignArg)
 
@@ -83,7 +83,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     mlCorr_complete = correlationAnalysis(completePairs_ml[:,:aacRC_1], completePairs_ml[:,:aacRC_2])
 
     ax2 = Axis(f[2, 1], title="Levenberg_Marquardt\nComplete pairs(n=$(nrow(completePairs_ml)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax2, completePairs_ml.aacRC_1, completePairs_ml.aacRC_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax2, completePairs_ml.aacRC_1, completePairs_ml.aacRC_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax2, [0], [1])
     text!(ax2, posX, posY,text="rₛ=$(mlCorr_complete[1, :rₛ])\nr=$(mlCorr_complete[1, :r])", align=alignArg)
 
@@ -92,7 +92,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     mlCorr_incomplete = correlationAnalysis(incompletePairs_ml[:,:aacRC_1], incompletePairs_ml[:,:aacRC_2])
 
     ax3 = Axis(f[3, 1], title="Levenberg_Marquardt\nIncomplete pairs(n=$(nrow(incompletePairs_ml)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax3, incompletePairs_ml.aacRC_1, incompletePairs_ml.aacRC_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax3, incompletePairs_ml.aacRC_1, incompletePairs_ml.aacRC_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax3, [0], [1])
     text!(ax3, posX, posY, text="rₛ=$(mlCorr_incomplete[1, :rₛ])\nr=$(mlCorr_incomplete[1, :r])", align=alignArg)
 
@@ -101,7 +101,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     medianCorr_all = correlationAnalysis(paired_median[:,:aacMedian_1], paired_median[:,:aacMedian_2])
     
     ax4 = Axis(f[1, 2], title="Posterior medians\nAll pairs(n=$(nrow(paired_median)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax4, paired_median.aacMedian_1, paired_median.aacMedian_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax4, paired_median.aacMedian_1, paired_median.aacMedian_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax4, [0], [1])
     text!(ax4, posX, posY, text="rₛ=$(medianCorr_all[1, :rₛ])\nr=$(medianCorr_all[1, :r])", align=alignArg)
 
@@ -110,7 +110,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     medianCorr_complete = correlationAnalysis(completePairs_median[:,:aacMedian_1], completePairs_median[:,:aacMedian_2])
     
     ax5 = Axis(f[2, 2], title="Posterior medians\nComplete pairs(n=$(nrow(completePairs_median)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax5, completePairs_median.aacMedian_1, completePairs_median.aacMedian_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax5, completePairs_median.aacMedian_1, completePairs_median.aacMedian_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax5, [0], [1])
     text!(ax5, posX, posY, text="rₛ=$(medianCorr_complete[1, :rₛ])\nr=$(medianCorr_complete[1, :r])", align=alignArg)
 
@@ -119,7 +119,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     medianCorr_incomplete = correlationAnalysis(incompletePairs_median[:,:aacMedian_1], incompletePairs_median[:,:aacMedian_2])
     
     ax6 = Axis(f[3, 2], title="Posterior medians\nIncomplete pairs(n=$(nrow(incompletePairs_median)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax6, incompletePairs_median.aacMedian_1, incompletePairs_median.aacMedian_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax6, incompletePairs_median.aacMedian_1, incompletePairs_median.aacMedian_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax6, [0], [1])
     text!(ax6, posX, posY, text="rₛ=$(medianCorr_incomplete[1, :rₛ])\nr=$(medianCorr_incomplete[1, :r])", align=alignArg)
     
@@ -128,7 +128,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     qqCorr_all = correlationAnalysis(paired_posterior[:,:sorted_1], paired_posterior[:,:sorted_2])
 
     ax7 = Axis(f[1, 3], title="Posterior QQ\nAll pairs(n=$(nrow(paired_median)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax7, paired_posterior.sorted_1, paired_posterior.sorted_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax7, paired_posterior.sorted_1, paired_posterior.sorted_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax7, [0], [1])
     text!(ax7, posX, posY, text="rₛ=$(qqCorr_all[1, :rₛ])\nr=$(qqCorr_all[1, :r])", align=alignArg)
 
@@ -137,7 +137,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     qqCorr_complete = correlationAnalysis(completePairs_qq[:,:sorted_1], completePairs_qq[:,:sorted_2])
 
     ax8 = Axis(f[2, 3], title="Posterior QQ\nComplete pairs(n=$(nrow(completePairs_median)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax8, completePairs_qq.sorted_1, completePairs_qq.sorted_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax8, completePairs_qq.sorted_1, completePairs_qq.sorted_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax8, [0], [1])
     text!(ax8, posX, posY,text="rₛ=$(qqCorr_complete[1, :rₛ])\nr=$(qqCorr_complete[1, :r])", align=alignArg)
 
@@ -146,7 +146,7 @@ function plot_AACcomparison(paired_ml::DataFrame, paired_median::DataFrame, pair
     qqCorr_incomplete = correlationAnalysis(incompletePairs_qq[:,:sorted_1], incompletePairs_qq[:,:sorted_2])
 
     ax9 = Axis(f[3, 3], title="Posterior QQ\nIncomplete pairs(n=$(nrow(incompletePairs_median)))", xlabel="AAC Rep1", ylabel="AAC Rep2")
-    hexbin!(ax9, incompletePairs_qq.sorted_1, incompletePairs_qq.sorted_2, cellsize=cs, threshold=1, colormap=cl_map)
+    CairoMakie.hexbin!(ax9, incompletePairs_qq.sorted_1, incompletePairs_qq.sorted_2, cellsize=cs, threshold=1, colormap=cl_map)
     ablines!(ax9, [0], [1])
     text!(ax9, posX, posY,text="rₛ=$(qqCorr_incomplete[1, :rₛ])\nr=$(qqCorr_incomplete[1, :r])", align=alignArg)
 
@@ -169,11 +169,11 @@ function plot_negativeAACposterior(negAAC_posterior::DataFrame, sample_expId::Da
     ax3 = Axis(f[1, 3], title="Nb. of -AAC samples by exeriment - SD ≥ 20", ylabel="Nb. Exp.")
     ax4 = Axis(f[2, 3], title="Nb. of -AAC samples by exeriment - SD < 20", xlabel="Proportion MCMC samples", ylabel="Nb.Exp.")
 
-    hexbin!(ax1, negAAC_posterior.LDR, negAAC_posterior.HDR, cellsize=0.5, threshold=1, colormap=["gray95", "gray35", "black"])
+    CairoMakie.hexbin!(ax1, negAAC_posterior.LDR, negAAC_posterior.HDR, cellsize=0.5, threshold=1, colormap=["gray95", "gray35", "black"])
     ablines!(ax1, [0], [1])
     text!(ax1, 100, 80, text="Nb. Exp. = $K\nNb. MCMC samples = $k", align=[:center, :baseline])
 
-    hexbin!(ax2, negAAC_posterior.aacRC, negAAC_posterior.viab_sd, cellsize=0.5, threshold=1, colormap=["gray95", "gray35", "black"])
+    CairoMakie.hexbin!(ax2, negAAC_posterior.aacRC, negAAC_posterior.viab_sd, cellsize=0.5, threshold=1, colormap=["gray95", "gray35", "black"])
     hlines!(ax2, [20])
     text!(ax2, -40, 30, text="\nNb. MCMC samples = $kc", align=[:center, :baseline])
     text!(ax2, -40, 10, text="\nNb. MCMC samples = $ki", align=[:center, :baseline])

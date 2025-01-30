@@ -3,15 +3,15 @@ using Gadfly
 using Cairo, Fontconfig
 using DataFrames, HDF5, JLD2
 
-include("utils.jl")
-include("plot_utils.jl")
+include("../utils.jl")
+include("../plot_utils.jl")
 
 #### Correlation of experiments with multiple replicates
-figure_prefix = "_generated_figures/supp_fig/multiRep_corr/"
+figure_prefix = "_generated_figures/supp_fig/multiRep_corr"
 
 ## Numbers of exp./pairs
-data_prefix = "correlation_metrics/"
-for dt in ["gray", "gCSI", "ctrpv2"]
+data_prefix = "public_datasets/"
+for dt in ["gray"]#, "gCSI", "ctrpv2"]
     grouped_expID = load(joinpath(data_prefix, "rep_more2_pairing.jld2"))[dt]
     expID_by_pairs = [length(g.pairs) for g in  groupby(grouped_expID, :pairs)]
 
@@ -21,23 +21,23 @@ for dt in ["gray", "gCSI", "ctrpv2"]
 end
 
 ## Sampling analysis
-multiRep_ml = readCSV("_generated_data/multiRep_mlCorrelations.csv", true)
+multiRep_ml = readCSV("_generated_data/multiRep_mlCorrelations.csv", true);
 multiRep_ml[!, :method] = repeat(["Lev.-Mar."], nrow(multiRep_ml))
 
-multiRep_median = readCSV("_generated_data/multiRep_medianCorrelations.csv", true)
+multiRep_median = readCSV("_generated_data/multiRep_medianCorrelations.csv", true);
 multiRep_median[!, :method] = repeat(["Med. Posterior"], nrow(multiRep_median))
 
-multiRep_qq = readCSV("_generated_data/multiRep_qqCorrelations.csv", true)
-multiRep_qq[!, :method] = repeat(["QQ Posterior"], nrow(multiRep_qq))
+multiRep_qq = readCSV("_generated_data/multiRep_qqCorrelations.csv", true);
+multiRep_qq[!, :method] = repeat(["QQ Posterior"], nrow(multiRep_qq));
 
-multiRep_all = vcat(multiRep_ml, multiRep_median, multiRep_qq)
+multiRep_all = vcat(multiRep_ml, multiRep_median, multiRep_qq);
 
 function boxplotCorr(df::DataFrame, T::String, coef::Symbol)
     sg = Geom.subplot_grid(Geom.boxplot())
     sg.coord = Coord.cartesian(ymin=0, ymax=1.)
     p = Gadfly.plot(df, x=:param, y=coef, color=:param, xgroup=:dataset, 
                     sg,
-                    Guide.title(T))
+                    Guide.title(T));
     return p
 end
 

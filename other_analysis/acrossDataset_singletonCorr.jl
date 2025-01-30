@@ -1,9 +1,10 @@
 using DataFrames, HDF5, JLD2
-using JuBox
+using Gadfly, StatsPlots, CairoMakie
+#using JuBox
 
 include("../utils.jl")
 
-info_prefix = "data/curves_info/"
+info_prefix = "public_datasets/curves_info/"
 all_expId = mapreduce(dt -> getExpId_h5(dt), vcat, ["gray", "gCSI", "ctrpv2"])
 si_expId = StrIndex(all_expId)
 bidra_params = ["LDR", "HDR", "ic50", "slope"]
@@ -12,23 +13,23 @@ scaleColor = Scale.lab_gradient("gray95","black")
 ### Get info of all datasets
 function getInfo(dt::String)
     info_df = readCSV(info_prefix*dt*"_info.csv", true)[:, 1:3]
-    info_df = replaceChar(info_df, :experimentIds)
+    info_df = replaceChar(info_df, :exp_id)
 
     ### Slect experiments given our other analysis
     expId_list = getExpId_h5(dt)
-    info_df = filter(:experimentIds => x -> x ∈ expId_list, info_df)
-    info_df[!, :experimentIds] = [si_expId.str2id[v] for v in info_df.experimentIds]
+    info_df = filter(:exp_id => x -> x ∈ expId_list, info_df)
+    info_df[!, :exp_id] = [si_expId.str2id[v] for v in info_df.exp_id]
 
     info_df[!, "pairs"] = string.(info_df.drugid, ":", info_df.cellid)
-    replicates_df = combine(groupby(info_df, :pairs), :experimentIds=>(length∘unique)=>:n_rep)
+    replicates_df = combine(groupby(info_df, :pairs), :exp_id=>(length∘unique)=>:n_rep)
     singleton_pairs = filter(:n_rep => x -> x == 1, replicates_df)[:, :pairs]
 
-    return filter(:pairs => x -> x ∈ singleton_pairs, info_df)[:, [:experimentIds, :pairs]]
+    return filter(:pairs => x -> x ∈ singleton_pairs, info_df)[:, [:exp_id, :pairs]]
 end
 
 function createPairedList(df::DataFrame, dt::Array{String, 1})
-    rename!(df, Symbol("experimentIds_"*dt[1]) => "rep_1")
-    rename!(df, Symbol("experimentIds_"*dt[2]) => "rep_2")
+    rename!(df, Symbol("exp_id_"*dt[1]) => "rep_1")
+    rename!(df, Symbol("exp_id_"*dt[2]) => "rep_2")
     return df[:, [:rep_1, :rep_2]]
 end
 
@@ -131,7 +132,7 @@ common_gray_ctrpv2 = innerjoin(singleton_gray, singleton_ctrpv2, on=:pairs, rena
 
 ### Common singletons for all three dataset
 common_all = innerjoin(common_gCSI_ctrpv2, singleton_gray, on=:pairs)
-rename!(common_all, :experimentIds => :experimentIds_gray)
+rename!(common_all, :exp_id => :exp_id_gray)
 
 ### DO correlation
 singletonCorrelation(common_gCSI_gray, ["gCSI", "gray"])

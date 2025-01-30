@@ -2,7 +2,9 @@ using DataFrames, HDF5, JLD2
 include("../utils.jl")
 
 dt = ARGS[1]
-data_prefix = "correlation_metrics/"
+overwrite = parse(Bool, ARGS[2])
+
+data_prefix = "public_datasets/"
 bidra_params = ["LDR", "HDR", "ic50", "slope", "aac"]
 
 function doCorrelation(df::DataFrame, rep::Int)
@@ -21,15 +23,23 @@ function doCorrelation(df::DataFrame, rep::Int)
         mlCorr_df[:, :param] = [pr]
         mlCorr_df[:, :rep] = [rep]
 
-        CSV.write(results_prefix*"multiRep_mlCorrelations.csv", mlCorr_df, delim=",", append=true)
+        if rep == 1 && overwrite
+            CSV.write(results_prefix*"multiRep_mlCorrelations.csv", mlCorr_df, delim=",", append=false, header=["slope","intercept","r²","rₛ","r","N","dataset","param","rep"])
+        else
+            CSV.write(results_prefix*"multiRep_mlCorrelations.csv", mlCorr_df, delim=",", append=true)
+        end
     end
 end
 
 grouped_expID = load(joinpath(data_prefix, "rep_more2_pairing.jld2"))[dt]
 R = 10000
 
-for r in 2902:R
+
+
+
+for r in 1:R
     println("Resampling $r")
+
     tmp = mapreduce(g -> DataFrame(g[rand(1:nrow(g), 2), :]), vcat, groupby(grouped_expID, :pairs))
     pairing_df = DataFrame(rep_1 = tmp.exp_id_unique[1:2:end], rep_2 = tmp.exp_id_unique[2:2:end])
     mlPaired_df = getMLestimates(dt, pairing_df)
@@ -41,3 +51,4 @@ for r in 2902:R
     ### Correlation on all pairs
     @time doCorrelation(mlPaired_df, r)
 end
+
