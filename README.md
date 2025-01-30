@@ -4,9 +4,9 @@ Code for the evaluation of bidra robustness and application to discrepancies ana
 ## Datasets
 Used datasets: Gray (public), gCSI (public), CTRPv2 (public) and IRIC (in-house).
 
-The data from the three public datasets are access through PharmacoGX, using the `output_[nameOfDataset]_curves.ipynb`. Additional relevant files are also downloaded. An anonymized version of the IRIC dataset is made available.
+The data from the three public datasets are access through PharmacoGX, using the `output_[nameOfDataset]_curves.ipynb`. Additional relevant files are also downloaded. An anonymized version of the IRIC dataset is made available. It is important to make sure that the first column of the `curve_info/` files is labelled `exp_id`.
 
-As a first step, the data `CSV` of the public datasets are converted to `H5` files with `public_data/csvToH5.jl`. Experiments are also filtered for extreme values, as describe in the manuscript.
+As a first step, the data `CSV` of the public datasets are converted to `H5` files with `public_data/csvToH5.jl`. Experiments are also filtered for extreme values, as describe in the manuscript.  
 
 
 ## Robustness and Discrepancies analysis
@@ -30,7 +30,7 @@ Once all three datasets have been imported and converted to `H5`, LM estimates f
 Figures are outputed in `_generated_figures` and illustrate results obtained from the compound characterization and the correlation analysis.
 
 ## SAR Analysis
-The analysis of the IRIC dataset is stand-alone and is designed to be run within the `iric_dataset` directory.
+The analysis of the IRIC dataset is stand-alone and is designed to be run within the `iric_dataset` directory. Posterior are generated with `bidra_inference.jl` and saved in `results`. The complete SAR analysis can be run with `sar_analysis.jl` and the resulting figures will be saved in `figures`.
 
 ## Arborescence
 
@@ -43,12 +43,13 @@ project
 └───_generated_data
 |   └───tmp
 |
-└───_generated_data
+└───_generated_figures
 |   └───discrepancies_replicates
 |   └───methods_comparison
 |   └───models
 |   └───robustness
 |   └───viab_corr
+|   └───supp_fig
 |
 └───public_datasets
 |   |   csvToH5.jl
@@ -60,4 +61,13 @@ project
 |   └───cellAnnotations
 |   └───curves_info
 |   └───drugAnnotations
+|
+└───iric_dataset
+|   |   IRIC_anonymized.csv
+|   |   bidra_inference.jl
+|   |   sar_analysis.jl
+|   |   utils_iric.jl
+|   |
+|   └───results
+|   └───data
 ```
