@@ -6,12 +6,12 @@ using ProgressBars
 using JuBox
 
 include("utils.jl")
-fn = "_generated_figures/supp_fig/viab_corr/"
+fn = "_generated_figures/viab_corr/"
 scaleColor = Scale.lab_gradient("gray95", "black")
 
 ### Define dataset to analyze
 #dt = ARGS[1]
-dt = "ctrpv2"
+dt = "gray"
 
 ### Get data
 println("1. Get data")
@@ -24,11 +24,6 @@ viability_df = getRawData_h5(dt, false, si);
 dose_response_counts = combine(groupby(viability_df, :exp_id), :Concentration => length∘unique => :N_unique, :Viability => length => :N)
 dose_response_counts[:, :Δ] = dose_response_counts.N ./ dose_response_counts.N_unique
 occ_df = combine(groupby(dose_response_counts, :Δ), :Δ => length => :count)
-
-fig = CairoMakie.Figure()
-ax = CairoMakie.Axis(fig[1, 1])
-CairoMakie.barplot!(ax, occ_df.Δ, occ_df.count)
-display(fig)
 
 println("2. Pair experiments responses")
 rep1 = innerjoin(pairings_df[:, [:rep_1, :pairID]], viability_df, on=:rep_1=>:exp_id)
