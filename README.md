@@ -29,6 +29,9 @@ Once all three datasets have been imported and converted to `H5`, LM estimates f
 ### Figures
 Figures are outputed in `_generated_figures` and illustrate results obtained from the compound characterization and the correlation analysis.
 
+### Other analysis
+Analysis results presented as supplementary materials can be generated with the scripts contained in `other_analysis/`. These analysis include the multi-replicates correlations (`multiRep_posteriorcorrelation.jl` and `multiRep_MLcorrelation.jl`), the across datasets correlations (`acrossDataset_singletonCorr.jl`), the AAC analysis (`aac_analysis.jl`) and the generation of the various plots (`generateFigure_supp.jl` and `aac_plot.jl`).
+
 ## SAR Analysis
 The analysis of the IRIC dataset is stand-alone and is designed to be run within the `iric_dataset` directory. Posterior are generated with `bidra_inference.jl` and saved in `results`. The complete SAR analysis can be run with `sar_analysis.jl` and the resulting figures will be saved in `figures`.
 
