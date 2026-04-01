@@ -240,6 +240,8 @@ end
 
 function getPairings_h5(dt::String, si::StrIndex)
     fn = checkFile("public_datasets/rep2_pairing.h5")
+    fn = checkFile("correlation_metrics/rep2_pairing.h5")
+    #println(keys(h5open(fn, "r")))
     df = DataFrame(h5read(fn, dt))
 
     df[!,:rep_1] = [si.str2id[v] for v in df[!,:rep_1]]
@@ -275,7 +277,10 @@ function getMLestimates(dt::String, si::StrIndex)
 
     ## Only select estimate for datasets
     mle_data_dt = filter(:dataset => x -> x == dt, mle_data)
+
+    ## Convert string exp_id to int exp_id
     mle_data_dt[!, :exp_id] = [si.str2id[v] for v in mle_data_dt.exp_id]
+
     return mle_data_dt
 end
 
@@ -307,6 +312,7 @@ function getMLestimates(dt::String, si::StrIndex, pairing_df::DataFrame)
     mle_data = getMLestimates(dt,si)
     
     mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
+    print(mle_data[1:10, :])
     mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset, :convergence]]
 
     mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep1"))
