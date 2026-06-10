@@ -37,9 +37,11 @@ function do_inference_with_BiDRA_no_prior(data_df::DataFrame)
     nAdapt = 1000
     δ = 0.65
 
+    p₀ = (HDR=0.0, LDR=100.0, ic50=0.0, slope=1.0, σ=1.0)
+
     bidra_model = BIDRA_no_prior(data_df.x, data_df.y_noisy)
     bidra_sampler = NUTS(nAdapt, δ)
-    bidra_chains = sample(bidra_model, bidra_sampler, MCMCThreads(), nIte, nChain)
+    bidra_chains = sample(bidra_model, bidra_sampler, MCMCThreads(), nIte, nChain, initial_params=fill(Turing.InitFromParams(p₀), nChain))
 
     posterior_df = DataFrame(bidra_chains)[:,[:LDR, :HDR, :ic50, :slope, :σ, :chain]]
     return posterior_df

@@ -57,6 +57,9 @@ if plot_synthetic_data
 
         fn = figure_prefix*"/complete_DR_$(string(noise))_$(string(R))_repetitions.pdf"
         CairoMakie.save(fn, fig)
+
+        #fn = figure_prefix*"/complete_DR_$(string(noise))_$(string(R))_repetitions.jpg"
+        #CairoMakie.save(fn, fig)
     end
     close(dataset)
 end
@@ -139,6 +142,9 @@ for noise in noise_groups
         fn = figure_prefix*"/effect_of_missing_data_on_LM_$(string(noise))_$(string(R))_repetitions.pdf"
         CairoMakie.save(fn, fig)
 
+        #fn = figure_prefix*"/effect_of_missing_data_on_LM_$(string(noise))_$(string(R))_repetitions.jpg"
+        #CairoMakie.save(fn, fig)
+
     end
 
 
@@ -220,6 +226,9 @@ for noise in noise_groups
 
             fn = figure_prefix*"/effect_of_missing_data_on_BiDRA_$(posterior_name)_$(string(noise))_$(string(R))_repetitions.pdf"
             CairoMakie.save(fn, fig)
+
+            #fn = figure_prefix*"/effect_of_missing_data_on_BiDRA_$(posterior_name)_$(string(noise))_$(string(R))_repetitions.jpg"
+            #CairoMakie.save(fn, fig)
         end
     end
 end

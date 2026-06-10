@@ -2,7 +2,10 @@ using Turing, MCMCChains
 using Distributions
 using FillArrays
 
-include("../utils.jl")
+function llogistic(param::Array)
+    LDR, HDR, ic50, slope = param
+    return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
+end
 
 @model function modelNormal(x)
     μ ~ Normal()
