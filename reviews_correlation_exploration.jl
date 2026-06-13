@@ -1,8 +1,8 @@
 using DataFrames
-using Distributions, Statistics, StatsBase
-using Random
-using Gadfly, StatsPlots
-using Cairo, Fontconfig
+# using Distributions, Statistics, StatsBase
+# using Random
+# using Gadfly, StatsPlots
+# using Cairo, Fontconfig
 
 include("utils.jl")
 
@@ -16,10 +16,7 @@ println("Dataset: ", dt)
 expId_list = getExpId_h5(dt);
 print("Number of experiments: ", length(expId_list), "\n")
 
-si = StrIndex(expId_list);
-println("String Index created")
-
-pairings_df = getPairings_h5(dt, si)
+pairings_df = getPairings_h5(dt)
 println("Number of pairs: ", nrow(pairings_df), "\n")
 
 ### Make new pairings df based 
@@ -79,29 +76,29 @@ function do_correlation_bidra(df::DataFrame, repetition::Int, description::Strin
 end
 
 println("Get data, SD, and group")
-data_df = getRawData_h5(dt, false, si)
+data_df = getRawData_h5(dt, false)
 sd_df = combine(groupby(data_df, :exp_id), :Viability => std => :std_viability)
 expId_complete = sd_df[sd_df.std_viability .>= 20, :exp_id]
 expId_incomplete = sd_df[sd_df.std_viability .< 20, :exp_id]
 
 column_names = [:rep_1, :rep_2];
-R = 100;
+R = 1;
 
-#rep = 1;
+# rep = 1;
 for rep in 1:R
     reorder_pairs = map(random_pairing_order, eachrow(pairings_df));
-    reorder_pairs_df = DataFrame(collect.(eachrow(stack(reorder_pairs))), column_names);
+    reorder_pairs_df = DataFrame(collect.(eachrow(stack(reorder_pairs))), column_names)
 
-    pairingComplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_complete && y ∈ expId_complete, reorder_pairs_df);
+    pairingComplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_complete && y ∈ expId_complete, reorder_pairs_df)
     pairingIncomplete_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete && y ∈ expId_incomplete, reorder_pairs_df);
     pairingMixte_df = filter([:rep_1, :rep_2] => (x, y) -> x ∈ expId_incomplete || y ∈ expId_incomplete, reorder_pairs_df);
 
-    mlPaired_df = getMLestimates(dt, si, reorder_pairs_df);
+    mlPaired_df = getMLestimates(dt, reorder_pairs_df)
 
     ### ML estimates correlation 
-    mlComplete_df = getMLestimates(dt, si, pairingComplete_df)
-    mlIncomplete_df = getMLestimates(dt, si, pairingIncomplete_df)
-    mlMixte_df = getMLestimates(dt, si, pairingMixte_df)
+    mlComplete_df = getMLestimates(dt, pairingComplete_df)
+    mlIncomplete_df = getMLestimates(dt, pairingIncomplete_df)
+    mlMixte_df = getMLestimates(dt, pairingMixte_df)
 
     println("Correlation for all pairs")
     @time do_correlation_lsqfit(mlPaired_df, rep, "all pairs")
@@ -117,11 +114,11 @@ for rep in 1:R
 
     ### Posterior correlation
     function make_posterior_df(dt::String, pairings::DataFrame)
-        posterior_rep1 = getPosterior_h5(dt, false, si, Array(pairings.rep_1))
-        posterior_rep2 = getPosterior_h5(dt, false, si, Array(pairings.rep_2))
+        posterior_rep1 = getPosterior_h5(dt, false, String.(pairings.rep_1))
+        posterior_rep2 = getPosterior_h5(dt, false, String.(pairings.rep_2))
 
-        rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
-        rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
+        rename!(posterior_rep1, map(x -> String(x)*"_rep1", names(posterior_rep1)))
+        rename!(posterior_rep2, map(x -> String(x)*"_rep2", names(posterior_rep2)))
 
         paired_df = hcat(posterior_rep1, posterior_rep2)
 
@@ -145,3 +142,4 @@ for rep in 1:R
     println("Correlation for mixte pairs")
     @time do_correlation_bidra(posteriorMixte_df, rep, "mixte pairs")
 end
+
