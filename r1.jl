@@ -4,7 +4,8 @@ dt = "ctrpv2"#"gCSI"#"gray"
 df = DataFrame(h5read("correlation_metrics/rep2_pairing.h5", dt))
 all_id = [df.rep_1; df.rep_2] |> unique
 
-chains_colName = h["info/chains_colNames"][:];
+chains_colName = Dict(Symbol(s) => i for (i, s) ∈ enumerate(h["info/chains_colNames"][:]))
+
 
 mle_data = CSV.read("public_datasets/all_julia_curveFit.csv", DataFrame; pool = true)
 
@@ -57,10 +58,15 @@ buf = zeros(l_chain, l_param)
 
 for (i, row) in enumerate(eachrow(df))
     println("$i, $(row.rep_1)")
-    offset = l_chain * (i-1)
-    copyto!(buf, h["/$(df[i,1])/chains"])
-    mi[(1:4000) .+ offset, :] .= buf
-    copyto!(buf, h["/$(df[i,2])/chains"])
-    mj[(1:4000) .+ offset, :] .= buf
+    function copy_and_sort(j, m)
+        offset = l_chain * (i-1)
+        copyto!(buf, h["/$(df[i,j])/chains"])
+        sort!(buf, dims=1)
+        m[(1:4000) .+ offset, :] .= buf
+    end
+    copy_and_sort(1, mi)
+    copy_and_sort(2, mj)
 end
+
+@time acor(mi[:,chains_colName[:HDR]], mj[:,chains_colName[:HDR]], 100, false)
 
