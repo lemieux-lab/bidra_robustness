@@ -110,3 +110,83 @@ function r_swap_mc(a::AbstractVector{T}, b::AbstractVector{T}, B=10_000) where {
     return mean(out)
 end
 
+# High-Density Interval (disjoint)
+function disj_hdi(x::AbstractVector{T}, mass=0.66, λ=1.0) where {T <: AbstractFloat}
+    n = length(x)
+    m = floor(Int, mass * n)
+    inf = typemax(T)
+
+    d = fill(inf, n, m)
+    choice = fill(0, n, m)
+
+    for t ∈ 1:m, j in t:(n - m + t)
+
+        # option 1: x[j] is outside
+        best = j > 1 ? d[j - 1, t] : inf
+        best_l = 0
+
+        # option 2: final interval has length l and ends at j
+        for l in 1:min(j, t)
+            i = j - l + 1
+            prev_j = i - 2
+            prev_t = t - l
+
+            prev =
+                if prev_t == 0
+                    zero(T)
+                elseif prev_j >= 1
+                    d[prev_j, prev_t]
+                else
+                    inf
+                end
+
+            cost = prev + (x[j] - x[i]) + λ
+
+            if cost < best
+                best = cost
+                best_l = l
+            end
+        end
+
+        d[j, t] = best
+        choice[j, t] = best_l
+    end
+
+    # backtrack
+    res = Set{UnitRange}()
+
+    j, t = n, m
+    while (j ≥ 1 && t ≥ 1)
+        l = choice[j, t]
+        if l == 0
+            j -= 1
+        else
+            push!(res, (j - l + 1):j)
+            j = j - l - 1
+            t = t - l
+        end
+    end
+
+    return d[n, m], res
+end
+
+# High-Density Interval (single)
+function hdi(x::AbstractVector{T}, mass=0.95) where {T <: AbstractFloat}
+    x = sort(x)
+    n = length(x)
+    m = floor(Int, mass * n)
+    best = floatmax(T)
+    best_a = 0
+
+    for a ∈ 1:(n-m)
+
+        cost = x[a + m] - x[a]
+
+        if cost < best
+            best = cost
+            best_a = a
+        end
+    end
+
+    return best, best_a:(best_a+m)
+end
