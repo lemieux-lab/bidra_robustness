@@ -51,22 +51,25 @@ function r_swap(a, b)
 end
 
 
-function r_swap_mc(a, b; B=10_000)
+function r_swap_mc(a::AbstractVector{T}, b::AbstractVector{T}, B=10_000) where {T <: AbstractFloat}
     n = length(a)
+    half = inv(T(2))
+    invn = inv(T(n))
 
-    μz = (sum(a) + sum(b)) / (2n) # average mid-point
+    μz = (sum(a) + sum(b)) * half * invn # average mid-point
+    # println(typeof(μz))
     
-    Vz = 0.0
-    D  = 0.0
+    Vz = zero(T)
+    D = zero(T)
     
     d  = similar(a)
     zd = similar(a)
 
     for i in eachindex(a, b)
-        zi = (a[i] + b[i]) / 2
+        zi = (a[i] + b[i]) * half
         zc = (zi - μz)
 
-        d[i] = (a[i] - b[i]) / 2
+        d[i] = (a[i] - b[i]) * half
         zd[i] = zc * d[i]
 
         Vz += zc * zc
@@ -76,18 +79,34 @@ function r_swap_mc(a, b; B=10_000)
     Vz /= n
     D  /= n
 
-    out = 0.0
+    out = zeros(T, B)
 
     for k in 1:B
-        ϵ = rand([-1., +1.], n)
+        η  = zero(T)
+        C = zero(T)
+        # ϵ = rand([one(T), -one(T)], n)
 
-        η  = sum(ϵ .* d) / n
-        C = sum(ϵ .* zd) / n
+        @simd for i ∈ eachindex(d, zd)
+        #     # ϵ = one(T) # rand(Bool) ? -one(T) : one(T)
+        #     # ϵ = rand([-one(T), one(T)])
+        #     # ϵ = ifelse(rand(Bool), -one(T), one(T))
+        #     # ϵ = rand([T(-1), T(+1)])
+            if rand(Bool)
+                η += d[i]
+                C += zd[i]
+            else
+                η -= d[i]
+                C -= zd[i]
+            end
+        end
 
 
-        out += (Vz - D + η^2) / sqrt((Vz + D - η^2)^2 - 4C^2)
+        η *= invn
+        C *= invn
+
+        out[k] = (Vz - D + η^2) / sqrt((Vz + D - η^2)^2 - 4C^2)
     end
 
-    return out / B
+    return mean(out)
 end
 

@@ -30,14 +30,14 @@ both_i = all(.~is_complete; dims=2) |> vec
 # To extract the chains...
 l_chain, l_param = size(h["/$(df[1,1])/chains"])
 
-mi = zeros(nrow(df), l_chain, l_param)
-mj = zeros(nrow(df), l_chain, l_param)
+mi = zeros(Float32, nrow(df), l_chain, l_param)
+mj = zeros(Float32, nrow(df), l_chain, l_param)
 buf = zeros(l_chain, l_param)
 
 function copy_and_sort(h, df, buf, m, i, j)
     copyto!(buf, h["/$(df[i,j])/chains"])
     sort!(buf, dims=1)
-    m[i, :, :] .= buf
+    m[i, :, :] .= Float32.(buf)
 end
 
 @time for (i, row) in enumerate(eachrow(df))
@@ -45,15 +45,14 @@ end
     copy_and_sort(h, df, buf, mj, i, 2)
 end
 
-per_quantile = [r_swap(mi[:, i, chains_colName[:LDR]], mj[:, i, chains_colName[:LDR]]) for i ∈ 1:4000]
+function do_all(mi, mj, metric_idx)
+    res = zeros(eltype(mi), size(mi, 2))
+    Threads.@threads for i ∈ axes(mi, 2)
+        res[i] = r_swap_mc(mi[:, i, metric_idx], mj[:, i, metric_idx], 10_000)
+    end
+    return res
+end
 
-a = mi[:, 2000, chains_colName[:LDR]]
-b = mj[:, 2000, chains_colName[:LDR]]
+@time res = do_all(mi, mj, chains_colName[:LDR])
+quantile(res, [0.025, 0.25, 0.5, 0.75, 0.975])
 
-res = [r_swap_mc(mi[:, i, chains_colName[:LDR]], mj[:, i, chains_colName[:LDR]]) for i ∈ 1:4000]
-
-i = 2000
-@time r_swap_mc(a, b)
-
-
-r_swap(a, b)
