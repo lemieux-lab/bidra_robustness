@@ -2,9 +2,9 @@ using DataFrames, HDF5, JLD2, CSV
 
 h5safe(str) = replace(str, ' ' => '_', ':' => '_', '/' => '_')
 
-function identify_replicates(h, dt, id_col)
+function identify_replicates(h, dt)
     k = Set(keys(h) .|> Symbol)
-    info_df = CSV.read("public_datasets/curves_info/$(dt)_info.csv", DataFrame; pool = true)
+    info_df = CSV.read("public_datasets/curves_info/$(dt.name)_info.csv", DataFrame; pool = true)
     info_df.cond = [Symbol("$(row.cellid):$(row.drugid)") for row in eachrow(info_df)]
     gdf = groupby(info_df, :cond)
     paired_cond = subset(combine(gdf, nrow => :n), :n => v -> v .== 2)
@@ -12,7 +12,7 @@ function identify_replicates(h, dt, id_col)
     rep_1 = Symbol[]
     rep_2 = Symbol[]
     for (i, row) in eachrow(paired_cond) |> enumerate
-        ids = gdf[(row.cond,)][!, id_col] .|> h5safe .|> Symbol # assumes ids has length 2
+        ids = gdf[(row.cond,)][!, dt.id] .|> h5safe .|> Symbol # assumes ids has length 2
         if all(p ∈ k for p in ids)
             push!(rep_1, ids[1])
             push!(rep_2, ids[2])
