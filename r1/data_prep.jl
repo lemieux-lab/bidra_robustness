@@ -18,7 +18,6 @@ function prep_q_df(n)
     gen_qs(k) = round.(((1:k) .- 0.5) ./ k, digits=2)
     tmp_q = gen_qs(n)
     q_df = DataFrame(sym=Symbol.(tmp_q), q=tmp_q)
-    push!(q_df, (sym=:med, q=0.5))
     return q_df
 end
 
@@ -86,7 +85,7 @@ function prep_data!(dt, q_df, all_df)
             push!(all_df, (dataset=Symbol(dt.name), method=:bidra_quantile, metric=metric, sub=sub_label, q=row.sym, r_swap=quantile(res[(metric, sub_label)], row.q)))
         end
 
-        push!(all_df, (dataset=Symbol(dt.name), method=:mle, metric=metric, sub=sub_label, q=:med, r_swap=r_swap_mc(di[subs[sub_label], metric], dj[subs[sub_label], metric], 10_000)))
+        push!(all_df, (dataset=Symbol(dt.name), method=:mle, metric=metric, sub=sub_label, q=Symbol("0.5"), r_swap=r_swap_mc(di[subs[sub_label], metric], dj[subs[sub_label], metric], 10_000)))
     end
 end
 
