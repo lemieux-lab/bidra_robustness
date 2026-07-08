@@ -6,10 +6,10 @@ function copy_and_sort(h, df, buf, m, i, j)
     m[i, :, :] .= Float32.(buf)
 end
 
-function do_all(mi, mj, metric_idx)
+function do_all(mi, mj, metric_idx, spearman=false)
     res = zeros(eltype(mi), size(mi, 2))
     Threads.@threads for i ∈ axes(mi, 2)
-        res[i] = r_swap_mc(mi[:, i, metric_idx], mj[:, i, metric_idx], 10_000)
+        res[i] = r_swap_mc(mi[:, i, metric_idx], mj[:, i, metric_idx], 10_000, spearman)
     end
     return res
 end
@@ -21,13 +21,10 @@ function prep_q_df(n)
     return q_df
 end
 
-
-
-function prep_data!(dt, q_df, all_df)
+function prep_data!(dt, q_df, all_df, spearman=false, randomize=false)
     h = h5open("public_datasets/bidra/$(dt.name)_complete.h5")
 
-    df = identify_replicates(h, dt)
-    # all_id = [df.rep_1; df.rep_2] |> unique
+    df = identify_replicates(h, dt, randomize)
 
     mle_data = CSV.read("public_datasets/all_julia_curveFit.csv", DataFrame; pool = true)
 
@@ -72,7 +69,7 @@ function prep_data!(dt, q_df, all_df)
 
     Threads.@threads for metric ∈ metrics
         for sub_label ∈ sub_labels
-            tmp = do_all(mi[subs[sub_label],:,:], mj[subs[sub_label],:,:], chains_colName[metric])
+            tmp = do_all(mi[subs[sub_label],:,:], mj[subs[sub_label],:,:], chains_colName[metric], spearman)
             lock(res_lock) do 
                 res[(metric, sub_label)] = tmp
             end
@@ -82,10 +79,39 @@ function prep_data!(dt, q_df, all_df)
     for metric ∈ metrics, sub_label ∈ sub_labels
         for row ∈ eachrow(q_df)
             row.sym == :med && continue
-            push!(all_df, (dataset=Symbol(dt.name), method=:bidra_quantile, metric=metric, sub=sub_label, q=row.sym, r_swap=quantile(res[(metric, sub_label)], row.q)))
+            push!(all_df, (
+                dataset=Symbol(dt.name),
+                method=:bidra_quantile,
+                metric=metric,
+                sub=sub_label,
+                q=row.sym,
+                r_swap=quantile(res[(metric, sub_label)], row.q)
+            ))
         end
 
-        push!(all_df, (dataset=Symbol(dt.name), method=:mle, metric=metric, sub=sub_label, q=Symbol("0.5"), r_swap=r_swap_mc(di[subs[sub_label], metric], dj[subs[sub_label], metric], 10_000)))
+        push!(all_df, (
+            dataset=Symbol(dt.name),
+            method=:mle,
+            metric=metric,
+            sub=sub_label,
+            q=Symbol("0.5"),
+            r_swap=r_swap_mc(di[subs[sub_label], metric], dj[subs[sub_label], metric], 10_000, spearman)
+        ))
     end
 end
 
+function prep_all_data(dts, n_quantile=15, randomize=false)
+    q_df = prep_q_df(n_quantile)
+    q_df.color = my_col.(q_df.q)
+
+    dict_all_df = Dict{String, Any}()
+    for cor_fn ∈ ["Pearson", "Spearman"]
+        all_df = DataFrame()
+        for dt ∈ eachrow(dts)
+            prep_data!(dt, q_df, all_df, cor_fn == "Spearman", randomize)
+        end
+        dict_all_df[cor_fn] = all_df
+    end
+
+    return dict_all_df, q_df
+end
