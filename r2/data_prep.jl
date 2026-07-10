@@ -1,5 +1,12 @@
 using DataFrames, CSV, HDF5, Statistics, StatsBase
 
+dts = DataFrame([
+    (name="Gray", mle="gray", id=:exp_id),
+    (name="gCSI", mle="gCSI", id=:expid), 
+    (name="CTRPv2", mle="ctrpv2", id=:experimentIds)
+])
+dts.sym = Symbol.(dts.name)
+
 function copy_and_sort(h, df, buf, m, i, j)
     copyto!(buf, h["/$(df[i,j])/chains"])
     sort!(buf, dims=1)
@@ -21,10 +28,30 @@ function prep_q_df(n)
     return q_df
 end
 
-function prep_data!(dt, q_df, all_df, spearman=false, randomize=false)
-    h = h5open("public_datasets/bidra/$(dt.name)_complete.h5")
+struct PairedMetrics{D <: AbstractDataFrame, M <: AbstractArray, B <: AbstractVector{Bool}}
+    di::D
+    dj::D
+    mi::M
+    mj::M
+    chains_colName::Dict{Symbol, Int64}
+    subs::Dict{Symbol, B}
+end
 
+function PairedMetrics(dt, randomize=false)
+    h = h5open("public_datasets/bidra/$(dt.name)_complete.h5")
+    
     df = identify_replicates(h, dt, randomize)
+    
+    is_complete = falses(size(df))
+    for (i, row) in enumerate(eachrow(df))
+        is_complete[i, :] .= (std(h["$(row.rep_1)/data"][:,2]) >= 20., std(h["$(row.rep_2)/data"][:,2]) >= 20.)
+    end
+    
+    subs = Dict(
+        :both_c => all(is_complete; dims=2) |> vec,
+        :both_i => all(.~is_complete; dims=2) |> vec,
+        :all => trues(nrow(df))
+    )
 
     mle_data = CSV.read("public_datasets/all_julia_curveFit.csv", DataFrame; pool = true)
 
@@ -33,19 +60,8 @@ function prep_data!(dt, q_df, all_df, spearman=false, randomize=false)
 
     chains_colName = Dict(Symbol(s) => i for (i, s) ∈ enumerate(h["info/chains_colNames"][:]))
 
-    is_complete = falses(size(df))
-    for (i, row) in enumerate(eachrow(df))
-        is_complete[i, :] .= (std(h["$(row.rep_1)/data"][:,2]) >= 20., std(h["$(row.rep_2)/data"][:,2]) >= 20.)
-    end
-
     di = DataFrame(mle[i] for i ∈ df[:,1])
     dj = DataFrame(mle[i] for i ∈ df[:,2])
-
-    subs = Dict(
-        :both_c => all(is_complete; dims=2) |> vec,
-        :both_i => all(.~is_complete; dims=2) |> vec,
-        :all => trues(nrow(df))
-    )
 
     # To extract the chains...
     l_chain, l_param = size(h["/$(df[1,1])/chains"])
@@ -59,6 +75,11 @@ function prep_data!(dt, q_df, all_df, spearman=false, randomize=false)
         copy_and_sort(h, df, buf, mj, i, 2)
     end
 
+    return PairedMetrics(di, dj, mi, mj, chains_colName, subs)
+end
+
+function launch_analysis!(pm, dt, q_df, all_df, spearman=false)
+
     # Launch analysis
 
     metrics = [:LDR, :HDR, :ic50, :slope]
@@ -69,7 +90,7 @@ function prep_data!(dt, q_df, all_df, spearman=false, randomize=false)
 
     Threads.@threads for metric ∈ metrics
         for sub_label ∈ sub_labels
-            tmp = do_all(mi[subs[sub_label],:,:], mj[subs[sub_label],:,:], chains_colName[metric], spearman)
+            tmp = do_all(pm.mi[pm.subs[sub_label],:,:], pm.mj[pm.subs[sub_label],:,:], pm.chains_colName[metric], spearman)
             lock(res_lock) do 
                 res[(metric, sub_label)] = tmp
             end
@@ -95,7 +116,7 @@ function prep_data!(dt, q_df, all_df, spearman=false, randomize=false)
             metric=metric,
             sub=sub_label,
             q=Symbol("0.5"),
-            r_swap=r_swap_mc(di[subs[sub_label], metric], dj[subs[sub_label], metric], 10_000, spearman)
+            r_swap=r_swap_mc(pm.di[pm.subs[sub_label], metric], pm.dj[pm.subs[sub_label], metric], 10_000, spearman)
         ))
     end
 end
@@ -108,7 +129,8 @@ function prep_all_data(dts, n_quantile=15, randomize=false)
     for cor_fn ∈ ["Pearson", "Spearman"]
         all_df = DataFrame()
         for dt ∈ eachrow(dts)
-            prep_data!(dt, q_df, all_df, cor_fn == "Spearman", randomize)
+            pm = PairedMetrics(dt, randomize)
+            launch_analysis!(pm, dt, q_df, all_df, cor_fn == "Spearman")
         end
         dict_all_df[cor_fn] = all_df
     end

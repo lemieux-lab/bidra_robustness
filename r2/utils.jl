@@ -185,3 +185,13 @@ function prep_figure(dts, dict_all_df, cor_fn, q_df)
     resize_to_layout!(fig)
     return fig
 end
+
+function AlgebraOfGraphics.aesthetic_mapping(::Type{<:Hexbin},
+    ::AlgebraOfGraphics.Normal,
+    ::AlgebraOfGraphics.Normal)
+
+        return AlgebraOfGraphics.dictionary([
+        1 => AlgebraOfGraphics.AesX,
+        2 => AlgebraOfGraphics.AesY,
+    ])
+end
