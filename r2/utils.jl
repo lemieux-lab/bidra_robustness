@@ -25,6 +25,8 @@ function identify_replicates(h, dt, randomize=false)
 end
 
 function r_swap_mc(a::AbstractVector{T}, b::AbstractVector{T}, B=10_000, spearman=false) where {T <: AbstractFloat}
+    spearman && return spearman_swap_mc(a, b, B)
+
     n = length(a)
     half = inv(T(2))
     invn = inv(T(n))

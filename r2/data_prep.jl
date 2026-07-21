@@ -126,7 +126,8 @@ function prep_all_data(dts, n_quantile=15, randomize=false)
     q_df.color = my_col.(q_df.q)
 
     dict_all_df = Dict{String, Any}()
-    for cor_fn ∈ ["Pearson", "Spearman"]
+    for cor_fn ∈ ["Spearman"]
+    # for cor_fn ∈ ["Pearson", "Spearman"]
         all_df = DataFrame()
         for dt ∈ eachrow(dts)
             pm = PairedMetrics(dt, randomize)
