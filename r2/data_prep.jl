@@ -82,7 +82,7 @@ function launch_analysis!(pm, dt, q_df, all_df, spearman=false)
 
     # Launch analysis
 
-    metrics = [:LDR, :HDR, :ic50, :slope]
+    metrics = [:LDR, :HDR, :ic50, :slope, :aac]
     sub_labels = [:all, :both_c, :both_i]
 
     res = Dict{Tuple{Symbol, Symbol}, Vector{Float32}}()
@@ -126,8 +126,7 @@ function prep_all_data(dts, n_quantile=15, randomize=false)
     q_df.color = my_col.(q_df.q)
 
     dict_all_df = Dict{String, Any}()
-    for cor_fn ∈ ["Spearman"]
-    # for cor_fn ∈ ["Pearson", "Spearman"]
+    for cor_fn ∈ ["Pearson", "Spearman"]
         all_df = DataFrame()
         for dt ∈ eachrow(dts)
             pm = PairedMetrics(dt, randomize)

@@ -84,9 +84,103 @@ function r_swap_mc(a::AbstractVector{T}, b::AbstractVector{T}, B=10_000, spearma
     return mean(out)
 end
 
+function spearman_swap_mc(
+    a::AbstractVector{T},
+    b::AbstractVector{T},
+    B::Integer = 10_000
+) where {T <: AbstractFloat}
+    pooled = [a; b]
+    o = sortperm(pooled)
+    g = similar(o)
+    g_size = Int[]
+    n = length(a)
+
+    ngs = 0
+    previous = zero(T)
+
+    for (k, idx) in pairs(o)
+        value = pooled[idx]
+
+        if k == 1 || value != previous
+            ngs += 1
+            push!(g_size, 0)
+            previous = value
+        end
+
+        g[idx] = ngs
+        g_size[ngs] += 1
+    end
+
+    ga = view(g, 1:n)
+    gb = view(g, n+1:2n)
+
+    swap = BitVector(undef, n)
+    nx = zeros(Int, ngs)
+
+    rank_x = Vector{T}(undef, ngs)
+    rank_y = similar(rank_x)
+
+    μ = T(n + 1) / T(2)
+    ρsum = zero(T)
+
+    for _ in 1:B
+        rand!(swap)
+        fill!(nx, 0)
+
+        # Count pooled-value gs assigned to x.
+        for i in eachindex(a, b)
+            nx[swap[i] ? ga[i] : gb[i]] += 1
+        end
+
+        # Reconstruct exact midranks on both axes.
+        cum_x = 0
+        cum_y = 0
+
+        for g in eachindex(g_size)
+            ngx = nx[g]
+            ngy = g_size[g] - ngx
+
+            rank_x[g] = T(cum_x) + T(ngx + 1) / T(2)
+            rank_y[g] = T(cum_y) + T(ngy + 1) / T(2)
+
+            cum_x += ngx
+            cum_y += ngy
+        end
+
+        sxx = zero(T)
+        syy = zero(T)
+        sxy = zero(T)
+
+        for i in eachindex(a)
+            if swap[i]
+                rx = rank_x[ga[i]]
+                ry = rank_y[gb[i]]
+            else
+                rx = rank_x[gb[i]]
+                ry = rank_y[ga[i]]
+            end
+
+            dx = rx - μ
+            dy = ry - μ
+
+            sxx += dx * dx
+            syy += dy * dy
+            sxy += dx * dy
+        end
+
+        denominator = sqrt(sxx * syy)
+
+        ρsum += sxy / denominator
+    end
+
+    return ρsum / T(B)
+
+end
+
 function dataset_spec(all_df, dataset, q_df; show_row=false)
-    df_mle = subset(all_df, :dataset => ByRow(==(dataset)), :method => ByRow(==(:mle)))
-    df_bidra = subset(all_df, :dataset => ByRow(==(dataset)), :method => ByRow(!=(:mle)))
+    metrics = [:LDR, :HDR, :ic50, :slope]
+    df_mle = subset(all_df, :dataset => ByRow(==(dataset)), :method => ByRow(==(:mle)), :metric => ByRow(∈(metrics)))
+    df_bidra = subset(all_df, :dataset => ByRow(==(dataset)), :method => ByRow(==(:bidra_quantile)), :metric => ByRow(∈(metrics)))
 
     method_map = :method => renamer([:mle => "Levenberg-\nMarquardt", :bidra_quantile => "BiDRA posteriors\nper quantile"]) => "Methods"
     sub_map = :sub => renamer([:all => "All pairs", :both_c => "Complete pairs\nSD ≥ 20", :both_i => "Incomplete pairs\nSD < 20"])
@@ -106,16 +200,12 @@ function dataset_spec(all_df, dataset, q_df; show_row=false)
         visual(BarPlot; dodge_gap = 0.001)
 
     spec_bar_mle = data(df_mle) * base_mapping * visual(BarPlot; gap=1.5, color=HSL(0, 0, 0.3))
-    df_median = subset(all_df,
-        :dataset => ByRow(==(dataset)),
-        :q => ByRow(==(Symbol("0.5"))),
-        :method => ByRow(==(:bidra_quantile))
-    )
-    # spec_hl = data((pos = [0.5, 0.75],)) * mapping(:pos) * visual(HLines; linestyle=:dash)
+    df_median = subset(df_bidra, :q => ByRow(==(Symbol("0.5"))))
 
     spec_hl = data(df_median) * mapping(:r_swap, row=row_map, col=sub_map) * visual(HLines; linestyle=:dash)
     spec_hl += data((pos = [0.],)) * mapping(:pos) * visual(HLines; linestyle=:solid)
 
+    # return spec_hl
     return spec_hl + spec_bar_mle + spec_bar_bidra
 end
 

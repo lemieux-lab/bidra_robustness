@@ -2,3 +2,4 @@ Manifest.toml
 *.h5
 *.csv
 tmp/*
+cache_*
