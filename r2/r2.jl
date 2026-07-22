@@ -25,8 +25,8 @@ fig_s = prep_figure(dts, dict_all_df, "Spearman", q_df)
 save("tmp/figure_S1A_r2.pdf", fig_s)
 
 fig_pr = prep_figure(dts, dict_all_dfr, "Pearson", q_dfr)
-save("tmp/figure_5_r2.pdf", fig_p)
+save("tmp/figure_S6A_r2.pdf", fig_pr)
 
 fig_sr = prep_figure(dts, dict_all_dfr, "Spearman", q_dfr)
-save("tmp/figure_S6_r2.pdf", fig_s)
+save("tmp/figure_S6B_r2.pdf", fig_sr)
 
