@@ -2,7 +2,10 @@ using Turing, MCMCChains
 using Distributions
 using FillArrays
 
-include("../utils.jl")
+function llogistic(param::Array)
+    LDR, HDR, ic50, slope = param
+    return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
+end
 
 @model function modelNormal(x)
     μ ~ Normal()
@@ -35,6 +38,20 @@ end
     slope ~ LogNormal(0.5, 1)
     
     σ ~ LogNormal(1, 1)
+
+    for i in 1:length(xs)
+        f = llogistic([LDR, HDR, ic50, slope])
+        ys[i] ~ Normal(f(xs[i]), σ)
+    end
+end
+
+@model function BIDRA_no_prior(xs, ys) 
+    HDR ~ Uniform(-1000, 1000)
+    LDR ~ Uniform(-1000, 1000)
+    ic50 ~ Uniform(-1000, 1000)
+    slope ~ Uniform(-1000, 1000)
+    
+    σ ~ Uniform(0.001, 1000)
 
     for i in 1:length(xs)
         f = llogistic([LDR, HDR, ic50, slope])

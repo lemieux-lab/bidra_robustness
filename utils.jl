@@ -3,7 +3,6 @@ using CSV
 using Optim, GLM, LsqFit, StatsBase
 using Glob
 using ProgressBars
-using JuBox
 
 
 function checkFile(fn::String)
@@ -21,9 +20,9 @@ function readCSV(fn::String, h::Bool)
     return csv_file 
 end
 
-function readCSV(fn::String, h::Bool, expId::String, si::StrIndex) 
+function readCSV(fn::String, h::Bool, expId::String) 
     csv_file = DataFrame(CSV.File("$fn", header=h, ntasks=8))
-    csv_file[!,"exp_id"] = repeat([si.str2id[expId]], nrow(csv_file))
+    csv_file[!,"exp_id"] = repeat([Symbol(expId)], nrow(csv_file))
     return csv_file 
 end
 
@@ -78,7 +77,7 @@ function getRawData_h5(dt::String, localVar::Bool)
     return data_df
 end
 
-function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
+function getRawData_h5(dt::String, localVar::Bool)
     ### Define path
     if localVar
         fn_h5 = checkFile("public_datasets/local_$dt"*"_complete.h5")
@@ -97,7 +96,7 @@ function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
     ## Alocate memory for each column
     concentration_list = Array{Float32, 1}(undef, size_tot)
     viability_list = Array{Float32, 1}(undef, size_tot)
-    id_list = Array{Int32, 1}(undef, size_tot)
+    id_list = Array{Symbol, 1}(undef, size_tot)
     pos = 1
 
     for e in ProgressBar(expId_list)
@@ -106,7 +105,7 @@ function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
 
         concentration_list[pos:pos+n-1] = tmp[1:n]
         viability_list[pos:pos+n-1] = tmp[n+1:end]
-        id_list[pos:pos+n-1] = repeat([si.str2id[e]], n)
+        id_list[pos:pos+n-1] = repeat([Symbol(e)], n)
         
         pos += n
     end
@@ -117,7 +116,7 @@ function getRawData_h5(dt::String, localVar::Bool, si::StrIndex)
     return data_df
 end
 
-function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
+function getPosterior_h5(dt::String, localVar::Bool)
     ### Define path
     if localVar 
         fn_h5 = "public_datasets/local_$dt"*"_complete.h5"
@@ -135,7 +134,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
     size_tot = sum(expSize)
 
     chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
-    id_list = Array{Int32, 1}(undef, size_tot)
+    id_list = Array{Symbol, 1}(undef, size_tot)
     pos = 1
 
     for e in ProgressBar(expId_list)
@@ -143,7 +142,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
         tmp = read(file, e)["chains"]
 
         chains_mtx[pos:pos+n-1,1:length(chains_colName)]=tmp
-        id_list[pos:pos+n-1] = repeat([si.str2id[e]], n)
+        id_list[pos:pos+n-1] = repeat([Symbol(e)], n)
         
         pos += n
     end
@@ -155,7 +154,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex)
     return chains_df
 end
 
-function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::Array)
+function getPosterior_h5(dt::String, localVar::Bool, expId_list::Array)
     ### Define path
     if localVar 
         fn_h5 = "public_datasets/local_$dt"*"_complete.h5"
@@ -164,7 +163,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::A
     end
 
     if eltype(expId_list) != String
-        expId_list = [si.id2str[e] for e in expId_list]
+        expId_list = [Symbol(e) for e in expId_list]
     end
 
     ### Import all posterior
@@ -176,7 +175,7 @@ function getPosterior_h5(dt::String, localVar::Bool, si::StrIndex, expId_list::A
     size_tot = sum(expSize)
 
     chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
-    id_list = Array{Int32, 1}(undef, size_tot)
+    id_list = Array{Symbol, 1}(undef, size_tot)
     pos = 1
 
     for e in ProgressBar(expId_list)
@@ -209,7 +208,7 @@ function getPosterior_h5(dt::String, localVar::Bool, expId_list::Array)
 
     ## Alocate memory for each column
     chains_colName = read(file, "info")["chains_colNames"]
-    expSize = map(e -> size(file[e*"/chains"])[1], expId_list)
+    expSize = map(e -> size(file[String(e)*"/chains"])[1], expId_list)
     size_tot = sum(expSize)
 
     chains_mtx = Array{Float32, 2}(undef, size_tot, length(chains_colName))
@@ -238,60 +237,65 @@ function llogistic(param::Array)
     return x -> HDR + ((LDR - HDR) / (1 + 10^(slope * (x - ic50))))
 end
 
-function getPairings_h5(dt::String, si::StrIndex)
+function getPairings_h5(dt::String)
     fn = checkFile("public_datasets/rep2_pairing.h5")
+    fn = checkFile("correlation_metrics/rep2_pairing.h5")
+    #println(keys(h5open(fn, "r")))
     df = DataFrame(h5read(fn, dt))
 
-    df[!,:rep_1] = [si.str2id[v] for v in df[!,:rep_1]]
-    df[!,:rep_2] = [si.str2id[v] for v in df[!,:rep_2]]
+    df[!,:rep_1] = [Symbol(v) for v in df[!,:rep_1]]
+    df[!,:rep_2] = [Symbol(v) for v in df[!,:rep_2]]
     return df
 end
 
-function getPairedPosterior_h5(dt::String, si::StrIndex)
-    pairings_df = getPairings_h5(dt, si)
+function getPairedPosterior_h5(dt::String)
+    pairings_df = getPairings_h5(dt)
 
-    posterior_rep1 = getPosterior_h5(dt, false, si, Array(pairings_df.rep_1))
+    posterior_rep1 = getPosterior_h5(dt, false, Array(pairings_df.rep_1))
     rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
 
-    posterior_rep2 = getPosterior_h5(dt, false, si, Array(pairings_df.rep_2))
+    posterior_rep2 = getPosterior_h5(dt, false, Array(pairings_df.rep_2))
     rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
 
     return hcat(posterior_rep1, posterior_rep2)
 end
 
-function getPairedPosterior_h5(pairings_df::DataFrame, si::StrIndex, pair::Array{String, 1})
-    posterior_rep1 = getPosterior_h5(pair[1], false, si, Array(pairings_df.rep_1))
+function getPairedPosterior_h5(pairings_df::DataFrame, pair::Array{String, 1})
+    posterior_rep1 = getPosterior_h5(pair[1], false, Array(pairings_df.rep_1))
     rename!(posterior_rep1, map(x -> "$x"*"_rep1", names(posterior_rep1)))
 
-    posterior_rep2 = getPosterior_h5(pair[2], false, si, Array(pairings_df.rep_2))
+    posterior_rep2 = getPosterior_h5(pair[2], false, Array(pairings_df.rep_2))
     rename!(posterior_rep2, map(x -> "$x"*"_rep2", names(posterior_rep2)))
 
     return hcat(posterior_rep1, posterior_rep2)
 end
 
-function getMLestimates(dt::String, si::StrIndex)
+function getMLestimates(dt::String)
     mle_prefix = "public_datasets/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true)
 
     ## Only select estimate for datasets
     mle_data_dt = filter(:dataset => x -> x == dt, mle_data)
-    mle_data_dt[!, :exp_id] = [si.str2id[v] for v in mle_data_dt.exp_id]
+
+    ## Convert string exp_id to int exp_id
+    mle_data_dt[!, :exp_id] = [Symbol(v) for v in mle_data_dt.exp_id]
+
     return mle_data_dt
 end
 
-function getMLestimates(si::StrIndex, expId_list::Array)
+function getMLestimates(expId_list::Array)
     mle_prefix = "public_datasets/all_julia_curveFit.csv"
     mle_data = readCSV(mle_prefix, true)
 
     ## Only select estimate for datasets
-    mle_data_dt = filter(:exp_id => x -> si.str2id[x] ∈ expId_list, mle_data)
-    mle_data_dt[!, :exp_id] = [si.str2id[v] for v in mle_data_dt.exp_id]
+    mle_data_dt = filter(:exp_id => x -> Symbol(x) ∈ expId_list, mle_data)
+    mle_data_dt[!, :exp_id] = [Symbol(v) for v in mle_data_dt.exp_id]
     return mle_data_dt
 end
 
-function getMLestimates(si::StrIndex, pairing_df::DataFrame)
-    mle_data_rep1 = getMLestimates(si, pairing_df.rep_1)[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
-    mle_data_rep2 = getMLestimates(si, pairing_df.rep_2)[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
+function getMLestimates(pairing_df::DataFrame)
+    mle_data_rep1 = getMLestimates(pairing_df.rep_1)[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
+    mle_data_rep2 = getMLestimates(pairing_df.rep_2)[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset]]
 
     mle_tmp = innerjoin(pairing_df, mle_data_rep1, on=:rep_1 => :exp_id, renamecols=("" => "_rep1"))
     mle_tmp = innerjoin(mle_tmp, mle_data_rep2, on=:rep_2 => :exp_id, renamecols=("" => "_rep2"))
@@ -303,10 +307,11 @@ function getMLestimates(si::StrIndex, pairing_df::DataFrame)
     return mle_data_paired
 end
 
-function getMLestimates(dt::String, si::StrIndex, pairing_df::DataFrame)
-    mle_data = getMLestimates(dt,si)
+function getMLestimates(dt::String, pairing_df::DataFrame)
+    mle_data = getMLestimates(dt)
     
     mle_data = filter(:exp_id => x -> x ∈ pairing_df.rep_1 || x ∈ pairing_df.rep_2, mle_data)
+    # print(mle_data[1:10, :])
     mle_data = mle_data[:, [:exp_id, :LDR, :HDR, :ic50, :slope, :aac, :dataset, :convergence]]
 
     mle_tmp = innerjoin(pairing_df, mle_data, on=:rep_1 => :exp_id, renamecols=("" => "_rep1"))
